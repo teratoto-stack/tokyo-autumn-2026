@@ -56,7 +56,7 @@ main{flex:1;min-height:0;position:relative;overflow:hidden}
 .scroll{height:100%;overflow-y:auto;padding:14px 16px calc(84px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch}
 
 nav.tabs{flex:none;display:flex;border-top:1px solid var(--line);background:var(--bg);padding:6px 8px calc(8px + env(safe-area-inset-bottom,0px))}
-nav.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;font-size:11px;color:var(--mute);border-radius:10px}
+nav.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;font-size:10.5px;color:var(--mute);border-radius:10px;white-space:nowrap}
 nav.tabs button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 nav.tabs button.on{color:var(--accent)}
 
@@ -235,7 +235,7 @@ ul.chk li.ck{color:var(--mute);text-decoration:line-through}
         <div id="lmap" hidden></div>
         <div id="gmap" hidden></div>
       </div>
-      <div class="mapui"><div class="chips" id="mapChips"></div><div class="chips" id="mapDays"></div></div>
+      <div class="mapui"><div class="chips" id="mapChips"></div><div class="chips" id="mapDays"></div><div class="chips" id="mapSrc" hidden></div></div>
       <div class="legend" id="legend"></div>
       <div class="mapbtns">
         <button class="rbtn" id="zleg" aria-label="노선 범례" style="font-size:11px;font-weight:500" hidden>범례</button>
@@ -251,6 +251,12 @@ ul.chk li.ck{color:var(--mute);text-decoration:line-through}
       <div class="day-strip" id="dayStrip"></div>
       <div class="chips" id="listChips"></div>
       <div id="listBody"></div>
+    </div></section>
+
+    <section class="view" id="v-rec"><div class="scroll">
+      <div class="chips" id="recChips"></div>
+      <p class="hint" id="recHint"></p>
+      <div id="recBody"></div>
     </div></section>
 
     <section class="view" id="v-near"><div class="scroll">
@@ -277,6 +283,7 @@ ul.chk li.ck{color:var(--mute);text-decoration:line-through}
   <nav class="tabs">
     <button data-v="map" class="on"><svg viewBox="0 0 24 24"><path d="M9 4l6 2 6-2v14l-6 2-6-2-6 2V6z"/><path d="M9 4v14M15 6v14"/></svg>지도</button>
     <button data-v="list"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>일정·목록</button>
+    <button data-v="rec"><svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>추천</button>
     <button data-v="near"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><path d="M12 1v2M12 21v2M1 12h2M21 12h2"/></svg>지금 근처</button>
     <button data-v="info"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7v1"/></svg>여행 정보</button>
   </nav>
@@ -464,6 +471,9 @@ let done=new Set(store.get("done",[]));
 let me=null; // {lat,lng}
 let refId=store.get("ref","dormy");
 let catFilter=store.get("cat","all");
+let srcFilter="all";
+const SRCS=[["안현석 원장 추천 (Grace 동료, 2026-10 우에노 여행)","안 원장님","아내 병원 동료 의사. 2026년 10월 초 우에노 여행 직후 카톡으로 추천."],["유튜브 (10/5·10/6 영상)","유튜브","10/5·10/6에 함께 본 도쿄 영상에서 고른 곳."],["블로그 (남일)","블로그 남일","네이버 블로그(남일) 도쿄 여행기에서 발췌."],["기존 계획","우리 계획","요한·Grace가 처음부터 넣어 둔 장소."],["Jarvis 조사","Jarvis 조사","Jarvis가 평점·영업시간·동선을 기준으로 찾은 곳."],["요한 요청 · Jarvis 조사","대학","희원 입시 참고용으로 요한 요청, Jarvis가 정리."]];
+const srcShort=src=>{const f=SRCS.find(x=>x[0]===src);return f?f[1]:(src||"");};
 let dayFilter=store.get("day","all");
 const $=s=>document.querySelector(s);
 const byId=id=>PLACES.find(p=>p.id===id);
@@ -595,13 +605,13 @@ function centerOn(lat,lng,w){if(USE_G){gmap.setCenter({lat,lng});if(w)gmap.setZo
 function buildMarkers(){const wrap=$("#markers");wrap.innerHTML="";for(const p of PLACES){const e=document.createElement("button");e.className="mk "+(p.cat==="stay"?"stay":"");e.dataset.id=p.id;e.style.setProperty("--c",CATS[p.cat].c);e.innerHTML=`<span class="lb">${esc(p.ko.replace(/\s*\(.*\)$/,"").replace(/^러닝: /,""))}</span><span class="pin"></span>`;e.addEventListener("click",ev=>{ev.stopPropagation();openSheet(p.id);});wrap.appendChild(e);}
   const m=document.createElement("div");m.className="mk me";m.id="meMk";m.innerHTML=`<span class="pin"></span>`;m.hidden=true;wrap.appendChild(m);}
 function placeMarkers(){if(USE_G){if(!gOv||!gOv.getProjection())return;const pr=gOv.getProjection();const z=gmap.getZoom();
-    for(const p of PLACES){const e=gEls[p.id];if(!e)continue;const vis=catFilter==="all"||p.cat===catFilter;e.hidden=!vis;if(!vis)continue;const pt=pr.fromLatLngToDivPixel(new google.maps.LatLng(p.lat,p.lng));e.style.left=pt.x+"px";e.style.top=pt.y+"px";e.classList.toggle("lbl",z>=15||p.cat==="stay");e.classList.toggle("done",done.has(p.id));e.classList.toggle("sel",curId===p.id);e.classList.toggle("dim",ROUTE_ON&&dayFilter!=="all"&&!(ROUTES[dayFilter]||[]).includes(p.id));}
+    for(const p of PLACES){const e=gEls[p.id];if(!e)continue;const vis=(catFilter==="all"||p.cat===catFilter)&&(srcFilter==="all"||p.src===srcFilter);e.hidden=!vis;if(!vis)continue;const pt=pr.fromLatLngToDivPixel(new google.maps.LatLng(p.lat,p.lng));e.style.left=pt.x+"px";e.style.top=pt.y+"px";e.classList.toggle("lbl",z>=15||p.cat==="stay");e.classList.toggle("done",done.has(p.id));e.classList.toggle("sel",curId===p.id);e.classList.toggle("dim",ROUTE_ON&&dayFilter!=="all"&&!(ROUTES[dayFilter]||[]).includes(p.id));}
     if(gMeEl){if(me){const pt=pr.fromLatLngToDivPixel(new google.maps.LatLng(me.lat,me.lng));gMeEl.style.left=pt.x+"px";gMeEl.style.top=pt.y+"px";gMeEl.hidden=false;}else gMeEl.hidden=true;}return;}
-  if(USE_L){const z=lmap.getZoom();for(const p of PLACES){const m=lmk[p.id];if(!m)continue;const vis=catFilter==="all"||p.cat===catFilter;const el=m.getElement();if(vis&&!lmap.hasLayer(m))m.addTo(lmap);if(!vis&&lmap.hasLayer(m))lmap.removeLayer(m);if(el){const mk=el.querySelector(".mk");if(mk){mk.classList.toggle("lbl",z>=15||p.cat==="stay");mk.classList.toggle("done",done.has(p.id));mk.classList.toggle("sel",curId===p.id);mk.classList.toggle("dim",ROUTE_ON&&dayFilter!=="all"&&!(ROUTES[dayFilter]||[]).includes(p.id));}}}
+  if(USE_L){const z=lmap.getZoom();for(const p of PLACES){const m=lmk[p.id];if(!m)continue;const vis=(catFilter==="all"||p.cat===catFilter)&&(srcFilter==="all"||p.src===srcFilter);const el=m.getElement();if(vis&&!lmap.hasLayer(m))m.addTo(lmap);if(!vis&&lmap.hasLayer(m))lmap.removeLayer(m);if(el){const mk=el.querySelector(".mk");if(mk){mk.classList.toggle("lbl",z>=15||p.cat==="stay");mk.classList.toggle("done",done.has(p.id));mk.classList.toggle("sel",curId===p.id);mk.classList.toggle("dim",ROUTE_ON&&dayFilter!=="all"&&!(ROUTES[dayFilter]||[]).includes(p.id));}}}
     if(me){if(!meL){meL=L.circleMarker([me.lat,me.lng],{radius:8,color:"#fff",weight:2,fillColor:"#2f7cf6",fillOpacity:1}).addTo(lmap);}else meL.setLatLng([me.lat,me.lng]);}return;}
   const r=$("#mapwrap").getBoundingClientRect();const sc=r.width/view.w;const showLb=view.w<22;
   for(const e of $("#markers").children){if(e.id==="meMk"){if(me){const[x,y]=px(me.lat,me.lng);e.style.left=((x-view.x)*sc)+"px";e.style.top=((y-view.y)*sc)+"px";e.hidden=false;}else e.hidden=true;continue;}
-    const p=byId(e.dataset.id);const vis=catFilter==="all"||p.cat===catFilter;e.hidden=!vis;if(!vis)continue;const[x,y]=px(p.lat,p.lng);e.style.left=((x-view.x)*sc)+"px";e.style.top=((y-view.y)*sc)+"px";e.classList.toggle("lbl",showLb||p.cat==="stay");e.classList.toggle("done",done.has(p.id));e.classList.toggle("dim",ROUTE_ON&&dayFilter!=="all"&&!(ROUTES[dayFilter]||[]).includes(p.id));}}
+    const p=byId(e.dataset.id);const vis=(catFilter==="all"||p.cat===catFilter)&&(srcFilter==="all"||p.src===srcFilter);e.hidden=!vis;if(!vis)continue;const[x,y]=px(p.lat,p.lng);e.style.left=((x-view.x)*sc)+"px";e.style.top=((y-view.y)*sc)+"px";e.classList.toggle("lbl",showLb||p.cat==="stay");e.classList.toggle("done",done.has(p.id));e.classList.toggle("dim",ROUTE_ON&&dayFilter!=="all"&&!(ROUTES[dayFilter]||[]).includes(p.id));}}
 // pan/zoom
 function bindPan(){const w=$("#mapwrap");let pts=new Map(),last=null,pinch=null;
   w.addEventListener("pointerdown",e=>{if(USE_L||USE_G||e.target.closest(".mk"))return;w.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);if(pts.size===1)last=[e.clientX,e.clientY];if(pts.size===2){const a=[...pts.values()];pinch={d:Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]),w:view.w};}});
@@ -624,6 +634,7 @@ function bindPan(){const w=$("#mapwrap");let pts=new Map(),last=null,pinch=null;
 bindPan();
 function mapChips(){const el=$("#mapChips");el.innerHTML=`<button class="chip ${catFilter==="all"?"on":""}" data-c="all">전체</button>`+Object.entries(CATS).map(([k,v])=>`<button class="chip ${catFilter===k?"on":""}" data-c="${k}"><span class="dot" style="background:${v.c}"></span>${v.n}</button>`).join("");
   el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{catFilter=b.dataset.c;store.set("cat",catFilter);mapChips();placeMarkers();renderList();});
+  const ms=$("#mapSrc");ms.hidden=srcFilter==="all";ms.innerHTML=srcFilter==="all"?"":`<button class="chip on" id="srcClear">${srcShort(srcFilter)} 추천만 표시 · 해제 ×</button>`;if(srcFilter!=="all")$("#srcClear").onclick=()=>{srcFilter="all";mapChips();placeMarkers();};
   const md=$("#mapDays");md.hidden=!ROUTE_ON;md.innerHTML=`<button class="chip ${dayFilter==="all"?"on":""}" data-d="all">동선: 전체</button>`+DAYS.map(x=>`<button class="chip ${dayFilter==x.d?"on":""}" data-d="${x.d}">${x.d}일 (${x.w})</button>`).join("");
   md.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{dayFilter=b.dataset.d==="all"?"all":+b.dataset.d;store.set("day",dayFilter);mapChips();drawRoute();placeMarkers();renderList();});
   $("#legend").innerHTML=LINES.map(l=>`<span><i style="background:${l.c}"></i>${l.n.replace("JR ","").replace("게이오 ","").replace("도큐 ","").replace("게이세이 ","")}</span>`).join("");}
@@ -647,7 +658,7 @@ function openSheet(id){const p=byId(id);curId=id;const now=tokyoNow();const st=o
     ${p.hoursText||p.h?`<dt>영업</dt><dd>${esc(p.hoursText)}${p.h?"<br>"+stateLabel(st):""}</dd>`:""}
     ${p.note?`<dt>참고</dt><dd class="warn">${esc(p.note)}</dd>`:""}
     ${p.how?`<dt>가는 법</dt><dd>${esc(p.how)}</dd>`:""}
-    ${p.src?`<dt>출처</dt><dd>${esc(p.src)}</dd>`:""}
+    ${p.src?`<dt>추천</dt><dd>${esc(p.src)}</dd>`:""}
     ${p.addr?`<dt>주소</dt><dd class="ja">${esc(p.addr)}</dd>`:""}
     <dt>계획일</dt><dd class="num">${dayStr}</dd>
     ${dstr?`<dt>거리</dt><dd class="num">${dstr}</dd>`:""}
@@ -668,7 +679,7 @@ $("#shX").onclick=closeSheet;$("#bjX").onclick=()=>$("#bigja").classList.remove(
 (function(){const s=$("#sheet");let y0=null;s.addEventListener("touchstart",e=>{y0=e.touches[0].clientY;},{passive:true});s.addEventListener("touchend",e=>{if(y0!==null&&e.changedTouches[0].clientY-y0>70&&$("#shBody").scrollTop<=0)closeSheet();y0=null;});})();
 
 /* ---------- 목록 ---------- */
-function rowHtml(p,extra){const now=tokyoNow();const st=openState(p,now);return`<button class="row ${done.has(p.id)?"done":""}" data-id="${p.id}" style="--c:${CATS[p.cat].c}"><span class="bar"></span><span class="nm">${esc(p.ko)}<span class="st">${esc(p.st)}</span><span class="ja">${esc(p.ja)}</span><span class="why">${esc(p.why)}</span></span><span class="rt">${extra||""}${p.h?stateLabel(st):""}</span></button>`;}
+function rowHtml(p,extra){const now=tokyoNow();const st=openState(p,now);return`<button class="row ${done.has(p.id)?"done":""}" data-id="${p.id}" style="--c:${CATS[p.cat].c}"><span class="bar"></span><span class="nm">${esc(p.ko)}<span class="st">${esc(p.st)}</span>${p.src?`<span class="st">${esc(srcShort(p.src))}</span>`:""}<span class="ja">${esc(p.ja)}</span><span class="why">${esc(p.why)}</span></span><span class="rt">${extra||""}${p.h?stateLabel(st):""}</span></button>`;}
 function bindRows(el){el.querySelectorAll(".row").forEach(b=>b.onclick=()=>{openSheet(b.dataset.id);});}
 function renderList(){const ds=$("#dayStrip");ds.innerHTML=`<button class="${dayFilter==="all"?"on":""}" data-d="all"><small>전체</small><b>All</b></button>`+DAYS.map(x=>`<button class="${dayFilter==x.d?"on":""}" data-d="${x.d}"><small>${x.w}</small><b class="num">${x.d}</b></button>`).join("");
   ds.querySelectorAll("button").forEach(b=>b.onclick=()=>{dayFilter=b.dataset.d==="all"?"all":+b.dataset.d;store.set("day",dayFilter);renderList();mapChips();drawRoute();placeMarkers();});
@@ -680,6 +691,16 @@ function renderList(){const ds=$("#dayStrip");ds.innerHTML=`<button class="${day
     html+=`<div class="sec">10/${dd.d} (${dd.w}) · ${dd.t}</div>`;html+=g.length?`<div class="list">${g.map(p=>rowHtml(p)).join("")}</div>`:`<div class="empty">이 날의 계획 장소가 없습니다.</div>`;
     if(flex.length&&(catFilter==="all"||catFilter==="eat"||catFilter==="cafe"))html+=`<div class="sec">언제든 · 숙소 근처 먹거리</div><div class="list">${flex.map(p=>rowHtml(p)).join("")}</div>`;}
   body.innerHTML=html||`<div class="empty">표시할 장소가 없습니다.</div>`;bindRows(body);}
+
+/* ---------- 추천자별 ---------- */
+let recSel=store.get("rec",SRCS[0][0]);
+function renderRec(){const rc=$("#recChips");rc.innerHTML=SRCS.map(([k,n])=>`<button class="chip ${recSel===k?"on":""}" data-k="${esc(k)}">${n} <small>${PLACES.filter(p=>p.src===k).length}</small></button>`).join("");
+  rc.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{recSel=b.dataset.k;store.set("rec",recSel);renderRec();});
+  const meta=SRCS.find(x=>x[0]===recSel)||[recSel,recSel,""];$("#recHint").innerHTML=`<b>${esc(meta[1])}</b> — ${esc(meta[2])} <button class="chip" id="recMap" style="margin-left:6px">지도에서 보기</button>`;
+  $("#recMap").onclick=()=>{srcFilter=recSel;catFilter="all";store.set("cat","all");mapChips();showView("map");placeMarkers();const ps=PLACES.filter(p=>p.src===recSel&&!p.offmap);if(ps.length){const la=ps.reduce((a,p)=>a+p.lat,0)/ps.length,lo=ps.reduce((a,p)=>a+p.lng,0)/ps.length;centerOn(la,lo,ps.length>3?30:14);}};
+  const items=PLACES.filter(p=>p.src===recSel);let html="";
+  for(const[k,v]of Object.entries(CATS)){const g=items.filter(p=>p.cat===k);if(!g.length)continue;html+=`<div class="sec">${v.n} · ${g.length}</div><div class="list">${g.map(p=>rowHtml(p)).join("")}</div>`;}
+  $("#recBody").innerHTML=html||`<div class="empty">아직 등록된 장소가 없습니다.</div>`;bindRows($("#recBody"));}
 
 /* ---------- 지금 근처 ---------- */
 let nearMode=store.get("nearMode","eat");
@@ -723,13 +744,13 @@ function renderInfo(){const ck=new Set(store.get("chk",[]));
   $("#infoBody").querySelectorAll("input[type=checkbox]").forEach(c=>c.onchange=()=>{const i=+c.id.slice(2);if(c.checked)ck.add(i);else ck.delete(i);store.set("chk",[...ck]);c.closest("li").classList.toggle("ck",c.checked);});}
 
 /* ---------- 탭·커버 ---------- */
-function showView(v){document.querySelectorAll(".view").forEach(e=>e.classList.toggle("on",e.id==="v-"+v));document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));closeSheet();if(v==="map"){if(USE_G){setTimeout(()=>{google.maps.event.trigger(gmap,"resize");placeMarkers();},50);}else if(USE_L){setTimeout(()=>lmap.invalidateSize(),50);}else{fitAspect();applyView();}}if(v==="near")renderNear();if(v==="list")renderList();}
+function showView(v){document.querySelectorAll(".view").forEach(e=>e.classList.toggle("on",e.id==="v-"+v));document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));closeSheet();if(v==="map"){if(USE_G){setTimeout(()=>{google.maps.event.trigger(gmap,"resize");placeMarkers();},50);}else if(USE_L){setTimeout(()=>lmap.invalidateSize(),50);}else{fitAspect();applyView();}}if(v==="near")renderNear();if(v==="list")renderList();if(v==="rec")renderRec();}
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>showView(b.dataset.v));
 $("#goBtn").onclick=()=>{$("#cover").classList.add("off");store.set("seen",true);if(USE_G){setTimeout(()=>{google.maps.event.trigger(gmap,"resize");placeMarkers();},50);}else if(USE_L){setTimeout(()=>lmap.invalidateSize(),50);}else{fitAspect();applyView();}};
 $("#homeBtn").onclick=()=>{$("#cover").classList.remove("off");};
 
 /* ---------- 시작 ---------- */
-drawBase();buildMarkers();mapChips();renderList();renderNear();renderInfo();
+drawBase();buildMarkers();mapChips();renderList();renderRec();renderNear();renderInfo();
 if(store.get("seen",false))$("#cover").classList.add("off");
 requestAnimationFrame(()=>{centerOn(35.700,139.772,30);drawRoute();setMode(mode);});
 setTimeout(()=>locate(false),1200);
