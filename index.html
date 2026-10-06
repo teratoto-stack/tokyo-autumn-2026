@@ -798,7 +798,7 @@ $("#nbSee").onclick=()=>{nearMode="see";store.set("nearMode",nearMode);renderNea
 $("#gpsBtn").onclick=()=>locate(true);
 
 /* ---------- 여행 정보 ---------- */
-const CHECK=["여권 · Visit Japan Web 동반가족 등록 후 QR 캡처","스카이라이너 왕복권 QR(이메일) 저장","보조배터리는 기내 가방에 (1인 2개, 위탁 불가, 선반 보관 금지)","액체류 100ml 이하, 지퍼백","실물 유심 · 핀 · 공유기 설정 확인","토스 체크카드(외화통장 연결) · 세븐뱅크 ATM에서 엔화 인출","러닝화 · 러닝 복장 2세트","온천용 작은 파우치(헤어밴드, 스킨케어)","예약: 큐베이(10/23 12:30 점심) · 조지루시 GOHAN(10/20 18:00) · 타츠야(10/22 저녁, 나카메구로 갈 때만)","터너전(서양미술관) 10/24 개막 — 토요일 오전 가볼 경우 사전 예매"];
+const CHECK=["여권 · Visit Japan Web 동반가족 등록 후 QR 캡처","스카이라이너 왕복권 QR(이메일) 저장","보조배터리는 기내 가방에 (1인 2개, 위탁 불가, 선반 보관 금지)","액체류 100ml 이하, 지퍼백","실물 유심 · 핀 · 공유기 설정 확인","토스 체크카드(외화통장 연결) · 세븐뱅크 ATM에서 엔화 인출","러닝화 · 러닝 복장 2세트","온천용 작은 파우치(헤어밴드, 스킨케어)","예약: 큐베이(10/23 12:30 점심) · 조지루시 GOHAN(10/20 18:00) · 타츠야(10/22 저녁, 나카메구로 갈 때만)","터너전(서양미술관) 10/24 개막 — 토요일 오전 가볼 경우 사전 예매","100엔 동전 몇 개 — 호텔 런드리 건조기용(세탁기 무료·세제 자동, 건조기 100엔/20분, 층수는 프런트 확인)"];
 function renderInfo(){const ck=new Set(store.get("chk",[]));
   $("#infoBody").innerHTML=`
   <div class="card"><h3>항공 · 제주항공</h3>
@@ -806,7 +806,7 @@ function renderInfo(){const ck=new Set(store.get("chk",[]));
    <div class="flight"><div class="ap">NRT<small>나리타 T3 · 16:50 출발</small></div><div class="mid"><b>7C1106</b>10/24 (토)</div><div class="ap r">ICN<small>인천</small></div></div>
    <dl class="kv"><dt>예약번호</dt><dd>별도 보관 (항공사 앱·이메일)</dd><dt>좌석</dt><dd>8E · 8F</dd><dt>귀국일</dt><dd>T3 14:20 도착 목표. 게이세이우에노 13:20경 스카이라이너.</dd></dl></div>
   <div class="card"><h3>숙소 · 도미인 우에노 오카치마치</h3>
-   <dl class="kv"><dt>아고다</dt><dd>예약번호 별도 보관 · 더블룸 · 4박 (10/20~24)</dd><dt>결제</dt><dd>선결제 완료 · 숙박세 약 1,600엔 현장 납부</dd><dt>체크인</dt><dd>15:00 / 체크아웃 11:00</dd><dt>온천</dt><dd>12층 대욕장 15:00~익일 10:00 (사우나 01~05시 중단)</dd><dt>야식</dt><dd>무료 라멘 21:30~23:00</dd><dt>주소</dt><dd><span class="ja">東京都台東区上野6-7-22</span></dd></dl>
+   <dl class="kv"><dt>아고다</dt><dd>예약번호 별도 보관 · 더블룸 · 4박 (10/20~24)</dd><dt>결제</dt><dd>선결제 완료 · 숙박세 약 1,600엔 현장 납부</dd><dt>체크인</dt><dd>15:00 / 체크아웃 11:00</dd><dt>온천</dt><dd>12층 대욕장 15:00~익일 10:00 (사우나 01~05시 중단)</dd><dt>야식</dt><dd>무료 라멘 21:30~23:00</dd><dt>세탁</dt><dd>투숙객 런드리 코너(세탁기 무료·세제 자동 / 건조기 100엔·20분). 층수는 프런트 확인.</dd><dt>주소</dt><dd><span class="ja">東京都台東区上野6-7-22</span></dd></dl>
    <div class="acts" style="margin-top:10px"><a class="pri" href="${gmapsDir(byId("dormy"),"transit")}" target="_blank" rel="noopener">숙소로 길찾기</a></div></div>
   <div class="card"><h3>스카이라이너 · 공항 이동</h3>
    <dl class="kv"><dt>가는 날</dt><dd>T3 도착 → T2까지 도보 약 15분 또는 무료 셔틀 약 5분 → 공항제2빌딩역 창구에서 QR+여권으로 왕복권 교환, 귀국용 종이 교환권도 함께 수령. 게이세이우에노까지 약 41분.</dd><dt>오는 날</dt><dd>게이세이우에노역 창구에 종이 교환권 제시 → 좌석 지정. 15~20분 일찍 도착.</dd><dt>요금</dt><dd>온라인 왕복 4,500엔/인</dd></dl></div>
