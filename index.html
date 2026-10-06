@@ -486,7 +486,7 @@ const HAS_L=!!(typeof window.L!=="undefined"&&window.L.map);
 let USE_L=false;
 let lmap=null,lmk={},meL=null,tl=null;
 const GKEY="AIzaSyAgHepjJK7T6h3scDfI7_yjXvnNyOVhi8A";
-const MODES=[{n:"구글",g:true},{n:"약도"},{n:"지리원",url:"https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png",attr:"国土地理院 淡色地図"},{n:"상세",url:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",attr:"&copy; OpenStreetMap contributors"}].filter(x=>(x.g?!!GKEY:true)&&(x.url?HAS_L:true));
+const MODES=[{n:"구글",g:true},{n:"약도"},{n:"상세",url:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",attr:"&copy; OpenStreetMap contributors"}].filter(x=>(x.g?!!GKEY:true)&&(x.url?HAS_L:true));
 const VEC_IDX=MODES.findIndex(x=>!x.g&&!x.url);
 let mode=Math.min(+store.get("mode",0)||0,MODES.length-1);
 let USE_G=false,gmap=null,gOv=null,gRoute=null,gEls={},gMeEl=null,gLoading=false,gQueue=[];
