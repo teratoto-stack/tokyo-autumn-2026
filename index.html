@@ -225,6 +225,7 @@ ul.chk li.ck{color:var(--mute);text-decoration:line-through}
       <div class="mapui"><div class="chips" id="mapChips"></div></div>
       <div class="legend" id="legend"></div>
       <div class="mapbtns">
+        <button class="rbtn" id="ztile" aria-label="지도 스타일 바꾸기" style="font-size:11px;font-weight:500" hidden>심플</button>
         <button class="rbtn" id="zin" aria-label="확대">+</button>
         <button class="rbtn" id="zout" aria-label="축소">−</button>
         <button class="rbtn" id="zhome" aria-label="숙소로 이동"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg></button>
@@ -461,11 +462,11 @@ let lmap=null,lmk={},meL=null;
 function wToZoom(w){return w>=25?13:w>=12?15:16;}
 function initLeaflet(){$("#lmap").hidden=false;$("#mapsvg").hidden=true;$("#markers").hidden=true;$("#legend").hidden=true;
   lmap=L.map("lmap",{zoomControl:false,attributionControl:true,tap:false}).setView([35.700,139.772],13);
-  const TILES=[["https://tile.openstreetmap.org/{z}/{x}/{y}.png","&copy; OpenStreetMap contributors"],["https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png","&copy; OpenStreetMap, &copy; CARTO"],["https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png","国土地理院"]];
-  let ti=0,tl=null,errs=0,oks=0;
-  const useTiles=i=>{if(tl)lmap.removeLayer(tl);errs=0;oks=0;tl=L.tileLayer(TILES[i][0],{maxZoom:18,attribution:TILES[i][1]}).addTo(lmap);
-    tl.on("tileload",()=>{oks++;});tl.on("tileerror",()=>{errs++;if(oks===0&&errs>=3&&ti<TILES.length-1){ti++;useTiles(ti);toast("지도 서버를 바꿔 다시 불러옵니다");}else if(oks===0&&errs>=3){fallbackVector();}});};
-  useTiles(0);
+  const TILES=[["https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png","&copy; OpenStreetMap, &copy; CARTO","심플"],["https://tile.openstreetmap.org/{z}/{x}/{y}.png","&copy; OpenStreetMap contributors","상세"],["https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png","国土地理院","지리원"]];
+  let ti=store.get("tiles",0),tl=null,errs=0,oks=0;
+  const useTiles=i=>{ti=i;if(tl)lmap.removeLayer(tl);errs=0;oks=0;tl=L.tileLayer(TILES[i][0],{maxZoom:18,subdomains:"abcd",attribution:TILES[i][1]}).addTo(lmap);$("#ztile").textContent=TILES[i][2];
+    tl.on("tileload",()=>{oks++;});tl.on("tileerror",()=>{errs++;if(oks===0&&errs>=3){const n=(ti+1)%TILES.length;if(n!==0||ti!==TILES.length-1){useTiles(n);toast("지도 서버를 바꿔 다시 불러옵니다");}else fallbackVector();}});};
+  useTiles(ti);$("#ztile").hidden=false;$("#ztile").onclick=()=>{useTiles((ti+1)%TILES.length);store.set("tiles",ti);toast("지도 스타일: "+TILES[ti][2]);};
   for(const p of PLACES){if(p.offmap)continue;const html=`<div class="mk ${p.cat==="stay"?"stay":""}" data-id="${p.id}" style="--c:${CATS[p.cat].c}"><span class="lb">${esc(p.ko.replace(/\s*\(.*\)$/,"").replace(/^러닝: /,""))}</span><span class="pin"></span></div>`;
     const m=L.marker([p.lat,p.lng],{icon:L.divIcon({className:"",html,iconSize:[0,0],iconAnchor:[0,0]}),zIndexOffset:p.cat==="stay"?1000:0});m.on("click",()=>openSheet(p.id));lmk[p.id]=m;m.addTo(lmap);}
   lmap.on("zoomend",placeMarkers);lmap.on("click",closeSheet);}
