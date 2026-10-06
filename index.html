@@ -792,7 +792,7 @@ $("#nbSee").onclick=()=>{nearMode="see";store.set("nearMode",nearMode);renderNea
 $("#gpsBtn").onclick=()=>locate(true);
 
 /* ---------- 여행 정보 ---------- */
-const CHECK=["여권 · Visit Japan Web 동반가족 등록 후 QR 캡처","스카이라이너 왕복권 QR(이메일) 저장","보조배터리는 기내 가방에 (1인 2개, 위탁 불가, 선반 보관 금지)","액체류 100ml 이하, 지퍼백","실물 유심 · 핀 · 공유기 설정 확인","토스 체크카드(외화통장 연결) · 세븐뱅크 ATM에서 엔화 인출","러닝화 · 러닝 복장 2세트","온천용 작은 파우치(헤어밴드, 스킨케어)","예약 확인: 큐베이(10/23 점심), 야마하루(10/24 아침), 타츠야(10/22 저녁)"];
+const CHECK=["여권 · Visit Japan Web 동반가족 등록 후 QR 캡처","스카이라이너 왕복권 QR(이메일) 저장","보조배터리는 기내 가방에 (1인 2개, 위탁 불가, 선반 보관 금지)","액체류 100ml 이하, 지퍼백","실물 유심 · 핀 · 공유기 설정 확인","토스 체크카드(외화통장 연결) · 세븐뱅크 ATM에서 엔화 인출","러닝화 · 러닝 복장 2세트","온천용 작은 파우치(헤어밴드, 스킨케어)","예약: 큐베이(10/23 12:30 점심) · 조지루시 GOHAN(10/20 18:00) · 타츠야(10/22 저녁, 나카메구로 갈 때만)","터너전(서양미술관) 10/24 개막 — 토요일 오전 가볼 경우 사전 예매"];
 function renderInfo(){const ck=new Set(store.get("chk",[]));
   $("#infoBody").innerHTML=`
   <div class="card"><h3>항공 · 제주항공</h3>
@@ -804,8 +804,9 @@ function renderInfo(){const ck=new Set(store.get("chk",[]));
    <div class="acts" style="margin-top:10px"><a class="pri" href="${gmapsDir(byId("dormy"),"transit")}" target="_blank" rel="noopener">숙소로 길찾기</a></div></div>
   <div class="card"><h3>스카이라이너 · 공항 이동</h3>
    <dl class="kv"><dt>가는 날</dt><dd>T3 도착 → T2까지 도보 약 15분 또는 무료 셔틀 약 5분 → 공항제2빌딩역 창구에서 QR+여권으로 왕복권 교환, 귀국용 종이 교환권도 함께 수령. 게이세이우에노까지 약 41분.</dd><dt>오는 날</dt><dd>게이세이우에노역 창구에 종이 교환권 제시 → 좌석 지정. 15~20분 일찍 도착.</dd><dt>요금</dt><dd>온라인 왕복 4,500엔/인</dd></dl></div>
-  <div class="card"><h3>하루 리듬</h3>
-   <dl class="kv"><dt>아침</dt><dd>06시대 러닝(시노바즈 연못 또는 황거) → 숙소 온천 → 근처 아침</dd><dt>낮</dt><dd>하루 한 동네만. 걷다가 쉬고, 쉬다가 걷기</dd><dt>저녁</dt><dd>추천 식당 중 그날 기분으로. 21:30 이후 숙소 라멘, 온천</dd><dt>일몰</dt><dd>약 16:55 (10월 하순)</dd></dl></div>
+  <div class="card"><h3>5일 한눈에</h3>
+   <dl class="kv"><dt>10/20 화</dt><dd>도착 → 아메요코·PORTER → 도쿄역 역사·KITTE 야경 → 저녁 조지루시/모헤지</dd><dt>10/21 수</dt><dd>시노바즈 러닝 → 라팡 모닝 → 신시내티전 → 이즈에이 → 국립박물관 → 야나카·유야케단단 일몰 → 오시마치/타마토야</dd><dt>10/22 목</dt><dd>황거 러닝·스타벅스 → 도쿄대(중앙식당) → 와세다 → (옵션) 나카메구로·타츠야·아자부다이</dd><dt>10/23 금</dt><dd>스미다강 2~3km → 센소지 → 젠 아침 → 전망대 → 샤워 → 긴자 큐베이/빈초 → 기무라야·이토야·G6 → 츠키시마 몬자</dd><dt>10/24 토</dt><dd>온천 → 야요이켄 → 아메요코 → 공원 산책 → 11:00 체크아웃 → 13:20 스카이라이너</dd></dl>
+   <p class="hint" style="margin-top:8px">원칙: 06시대 러닝 → 숙소 샤워 → 하루 한 지역 → 저녁 후 온천·21:30 라멘. 일몰 약 16:55. 상세 시각은 「일정·목록」 탭.</p></div>
   <div class="card"><h3>출발 전 체크</h3><ul class="chk">${CHECK.map((t,i)=>`<li class="${ck.has(i)?"ck":""}"><input type="checkbox" id="ck${i}" ${ck.has(i)?"checked":""}><label for="ck${i}">${esc(t)}</label></li>`).join("")}</ul></div>
   <div class="card"><h3>긴급</h3><dl class="kv"><dt>일본</dt><dd>경찰 110 · 구급 119</dd><dt>영사콜센터</dt><dd>+82-2-3210-0404 (24시간)</dd></dl></div>
   <div class="foot">Grace와 도쿄, 가을 · 2026</div>`;
