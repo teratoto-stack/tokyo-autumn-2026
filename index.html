@@ -463,8 +463,8 @@ let lmap=null,lmk={},meL=null;
 function wToZoom(w){return w>=25?13:w>=12?15:16;}
 function initLeaflet(){$("#lmap").hidden=false;$("#mapsvg").hidden=true;$("#markers").hidden=true;$("#legend").hidden=true;
   lmap=L.map("lmap",{zoomControl:false,attributionControl:true,tap:false}).setView([35.700,139.772],13);
-  const TILES=[["https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png","&copy; OpenStreetMap, &copy; CARTO","심플"],["https://tile.openstreetmap.org/{z}/{x}/{y}.png","&copy; OpenStreetMap contributors","상세"],["https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png","国土地理院","지리원"]];
-  let ti=store.get("tiles",0),tl=null,errs=0,oks=0;
+  const TILES=[["https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png","国土地理院 淡色地図","심플"],["https://tile.openstreetmap.org/{z}/{x}/{y}.png","&copy; OpenStreetMap contributors","상세"]];
+  let ti=Math.min(store.get("tiles",0),1),tl=null,errs=0,oks=0;
   const useTiles=i=>{ti=i;if(tl)lmap.removeLayer(tl);errs=0;oks=0;tl=L.tileLayer(TILES[i][0],{maxZoom:18,subdomains:"abcd",attribution:TILES[i][1]}).addTo(lmap);$("#ztile").textContent=TILES[i][2];
     tl.on("tileload",()=>{oks++;});tl.on("tileerror",()=>{errs++;if(oks===0&&errs>=3){const n=(ti+1)%TILES.length;if(n!==0||ti!==TILES.length-1){useTiles(n);toast("지도 서버를 바꿔 다시 불러옵니다");}else fallbackVector();}});};
   useTiles(ti);$("#ztile").hidden=false;$("#ztile").onclick=()=>{useTiles((ti+1)%TILES.length);store.set("tiles",ti);toast("지도 스타일: "+TILES[ti][2]);};
