@@ -22,16 +22,16 @@
   --bg:#f4efe8; --bg2:#ebe4da; --card:#fbf8f3; --fg:#2a2420; --mute:#7a6f66; --line:#dcd2c6;
   --accent:#c4643a; --accent-fg:#ffffff; --green:#52704c; --water:#c7d6de; --rail:#b9ada0; --park:#d6dec8; --shadow:0 10px 30px rgba(60,40,20,.14);
   --disp:"Gowun Batang","Shippori Mincho","Noto Serif KR",serif; --body:"Noto Sans KR","Noto Sans JP",system-ui,sans-serif; --ja:"Shippori Mincho","Noto Sans JP",serif;
-  --c-stay:#b5485a; --c-see:#3f7a84; --c-eat:#c4643a; --c-cafe:#a9843c; --c-shop:#7a5c94; --c-run:#52704c; --c-tr:#6b6f78;
+  --c-stay:#e11d48; --c-see:#0284c7; --c-eat:#ea580c; --c-cafe:#b45309; --c-shop:#7c3aed; --c-run:#15803d; --c-tr:#475569; --c-univ:#4338ca; --route:#1f2937;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --bg:#1e1a17; --bg2:#272220; --card:#2b2623; --fg:#ece4da; --mute:#a69a8e; --line:#3d3631;
   --accent:#d9825a; --accent-fg:#1e1a17; --green:#8fae86; --water:#2f3d46; --rail:#5a524b; --park:#2f3a2c; --shadow:0 10px 30px rgba(0,0,0,.45);
-  --c-stay:#d4697a; --c-see:#6aa7b1; --c-eat:#d9825a; --c-cafe:#c9a55a; --c-shop:#a88ac2; --c-run:#8fae86; --c-tr:#9a9ea8; color-scheme:dark } }
+  --c-stay:#fb7185; --c-see:#38bdf8; --c-eat:#fb923c; --c-cafe:#fbbf24; --c-shop:#a78bfa; --c-run:#4ade80; --c-tr:#94a3b8; --c-univ:#a5b4fc; --route:#e5e7eb; color-scheme:dark } }
 :root[data-theme="dark"]{
   --bg:#1e1a17; --bg2:#272220; --card:#2b2623; --fg:#ece4da; --mute:#a69a8e; --line:#3d3631;
   --accent:#d9825a; --accent-fg:#1e1a17; --green:#8fae86; --water:#2f3d46; --rail:#5a524b; --park:#2f3a2c; --shadow:0 10px 30px rgba(0,0,0,.45);
-  --c-stay:#d4697a; --c-see:#6aa7b1; --c-eat:#d9825a; --c-cafe:#c9a55a; --c-shop:#a88ac2; --c-run:#8fae86; --c-tr:#9a9ea8; color-scheme:dark }
+  --c-stay:#fb7185; --c-see:#38bdf8; --c-eat:#fb923c; --c-cafe:#fbbf24; --c-shop:#a78bfa; --c-run:#4ade80; --c-tr:#94a3b8; --c-univ:#a5b4fc; --route:#e5e7eb; color-scheme:dark }
 
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%;overflow:hidden}
@@ -72,9 +72,11 @@ nav.tabs button.on{color:var(--accent)}
 #mapsvg{position:absolute;left:0;top:0;width:100%;height:100%}
 #markers{position:absolute;inset:0;pointer-events:none}
 .mk{position:absolute;transform:translate(-50%,-100%);pointer-events:auto;display:flex;flex-direction:column;align-items:center;gap:1px}
-.mk .pin{width:14px;height:14px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);background:var(--c)}
-.mk.stay .pin{width:20px;height:20px;border-width:3px}
-.mk .lb{font-size:11px;line-height:1.15;background:var(--card);color:var(--fg);padding:2px 6px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.18);white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;display:none}
+.mk .pin{width:17px;height:17px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);background:var(--c)}
+.mk.dim{opacity:.3}
+.mk.me.dim{opacity:1}
+.mk.stay .pin{width:24px;height:24px;border-width:3px}
+.mk .lb{font-size:11px;font-weight:500;line-height:1.15;background:var(--card);color:var(--fg);padding:2px 6px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.18);white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;display:none}
 .mk.lbl .lb{display:block}
 .mk.done .pin{opacity:.45}
 .mk.sel .pin{transform:rotate(-45deg) scale(1.35)}
@@ -223,7 +225,7 @@ ul.chk li.ck{color:var(--mute);text-decoration:line-through}
         <div id="markers"></div>
         <div id="lmap" hidden></div>
       </div>
-      <div class="mapui"><div class="chips" id="mapChips"></div></div>
+      <div class="mapui"><div class="chips" id="mapChips"></div><div class="chips" id="mapDays"></div></div>
       <div class="legend" id="legend"></div>
       <div class="mapbtns">
         <button class="rbtn" id="ztile" aria-label="지도 스타일 바꾸기" style="font-size:11px;font-weight:500" hidden>심플</button>
@@ -271,7 +273,7 @@ ul.chk li.ck{color:var(--mute);text-decoration:line-through}
 
 <script>
 /* ---------- DATA (Notion「도쿄 여행 장소 DB」와 동기; Jarvis가 갱신) ---------- */
-const CATS={stay:{n:"숙소",c:"var(--c-stay)"},see:{n:"관광·전망",c:"var(--c-see)"},eat:{n:"식당",c:"var(--c-eat)"},cafe:{n:"카페·간식",c:"var(--c-cafe)"},shop:{n:"쇼핑",c:"var(--c-shop)"},run:{n:"러닝",c:"var(--c-run)"},tr:{n:"교통",c:"var(--c-tr)"}};
+const CATS={stay:{n:"숙소",c:"var(--c-stay)"},see:{n:"관광·전망",c:"var(--c-see)"},eat:{n:"식당",c:"var(--c-eat)"},cafe:{n:"카페·간식",c:"var(--c-cafe)"},shop:{n:"쇼핑",c:"var(--c-shop)"},run:{n:"러닝",c:"var(--c-run)"},tr:{n:"교통",c:"var(--c-tr)"},univ:{n:"대학",c:"var(--c-univ)"}};
 const D="default";
 // h: 영업시간 구조. closed=휴무 요일(0=일). d[요일|default]=[[시작,종료],...]; null=정보 없음(필터에서 '확인' 표시)
 const PLACES=[
@@ -396,9 +398,25 @@ const PLACES=[
 {id:"azabudai",ko:"아자부다이 힐즈 스카이 로비",ja:"麻布台ヒルズ スカイロビー",cat:"see",st:"대안·옵션",area:"기타",days:[],lat:35.6612443,lng:139.7406186,
  why:"도쿄타워를 눈높이에서 보는 최신 야경 스팟.",note:"34층 카페 이용 시 입장(500엔+음료).",hoursText:"카페 영업시간 확인",h:null,how:"히비야선 카미야초역 직결."},
 {id:"ippodo",ko:"잇포도차호 아오야마",ja:"一保堂茶舗",cat:"cafe",st:"참고",area:"기타",days:[],lat:35.6625215,lng:139.7175663,
- why:"300년 교토 차 브랜드. 여러 일본차 비교·말차 체험.",note:"월 휴무.",hoursText:"10:00~18:00",h:{closed:[1],d:{[D]:[["10:00","18:00"]]}},how:""}
+ why:"300년 교토 차 브랜드. 여러 일본차 비교·말차 체험.",note:"월 휴무.",hoursText:"10:00~18:00",h:{closed:[1],d:{[D]:[["10:00","18:00"]]}},how:""},
+{id:"u-waseda",ko:"와세다대학 (SILS·PSE)",ja:"早稲田大学 早稲田キャンパス",cat:"univ",st:"참고",area:"기타",days:[],lat:35.7090,lng:139.7196,
+ why:"희원 1순위 목표. 영어 학부 6개(SILS·PSE·SSS·CMS·FSE·CSE). 오쿠마 강당과 11호관(SILS) 주변 산책.",note:"캠퍼스 외부인 출입 자유. 와세다 캠퍼스 기준(도야마·니시와세다 캠퍼스 인접).",hoursText:"캠퍼스 상시",h:null,how:"도쿄메트로 도자이선 와세다역 도보 5분. 숙소에서 약 35분."},
+{id:"u-todai",ko:"도쿄대학 혼고 캠퍼스 (PEAK)",ja:"東京大学 本郷キャンパス",cat:"univ",st:"참고",area:"우에노",days:[],lat:35.7128,lng:139.7621,
+ why:"영어 학부 PEAK. 아카몬·야스다 강당·산시로 연못. 우에노에서 걸어갈 수 있는 거리.",note:"",hoursText:"캠퍼스 상시",h:null,how:"숙소에서 도보 약 25분 또는 오에도선 혼고산초메역."},
+{id:"u-keio",ko:"게이오대학 미타 캠퍼스 (GIGA·PEARL)",ja:"慶應義塾大学 三田キャンパス",cat:"univ",st:"참고",area:"기타",days:[],lat:35.6489,lng:139.7426,
+ why:"영어 학부 GIGA(쇼난후지사와)·PEARL(경제, 미타). 도쿄타워 인근.",note:"GIGA 프로그램 캠퍼스는 SFC(후지사와)로 별도.",hoursText:"캠퍼스 상시",h:null,how:"미타역(아사쿠사선·미타선) 도보 7분. 아자부다이 힐즈와 묶어 방문 가능."},
+{id:"u-sophia",ko:"조치대학 (FLA)",ja:"上智大学 四谷キャンパス",cat:"univ",st:"참고",area:"기타",days:[],lat:35.6843,lng:139.7340,
+ why:"영어 교양학부 FLA. 도심 소형 캠퍼스, 가톨릭계.",note:"",hoursText:"캠퍼스 상시",h:null,how:"JR·마루노우치선 요츠야역 도보 3분. 황거 러닝 후 들르기 좋음."},
+{id:"u-rikkyo",ko:"릿쿄대학 (GLAP)",ja:"立教大学 池袋キャンパス",cat:"univ",st:"참고",area:"기타",days:[],lat:35.7310,lng:139.7050,
+ why:"영어 리버럴아츠 GLAP. 담쟁이 벽돌 본관이 아름다운 캠퍼스.",note:"",hoursText:"캠퍼스 상시",h:null,how:"이케부쿠로역 서쪽 출구 도보 7분."},
+{id:"u-meiji",ko:"메이지대학 스루가다이",ja:"明治大学 駿河台キャンパス",cat:"univ",st:"참고",area:"기타",days:[],lat:35.6975,lng:139.7617,
+ why:"리버티타워 17층 전망. 진보초·오차노미즈 산책 코스와 겹침.",note:"",hoursText:"캠퍼스 상시",h:null,how:"오차노미즈역 도보 3분."},
+{id:"u-icu",ko:"국제기독교대학 ICU",ja:"国際基督教大学",cat:"univ",st:"참고",area:"키치조지",days:[],lat:35.6873,lng:139.5333,
+ why:"영어·일본어 이중언어 리버럴아츠, 숲 속 캠퍼스. 키치조지 일정과 묶기 가능.",note:"",hoursText:"캠퍼스 상시",h:null,how:"무사시사카이역에서 버스 약 12분."}
 ];
 const DAYS=[{d:20,w:"화",t:"도착 · 도쿄역"},{d:21,w:"수",t:"우에노 · 야네센"},{d:22,w:"목",t:"키치조지 · 다이칸야마"},{d:23,w:"금",t:"아사쿠사 · 긴자 · 츠키시마"},{d:24,w:"토",t:"츠키지 · 귀국"}];
+const ROUTES={20:["narita","keisei","dormy","kitte","bairin","dormy"],21:["dormy","run-ueno","nmwa","tnm","izuei","toshogu","yanaka","yuyake","oshimachi","ameyoko","dormy"],22:["dormy","run-kokyo","kichijoji","tarekatsu","nakamichi","shimokita","tsite","sbux","tatsuya","dormy"],23:["dormy","run-sumida","sensoji","acc","kappa","kyubey","kimuraya","g6","itoya","kiyosumi","bluebottle","monja","dormy"],24:["dormy","tsukiji","yamacho","yamaharu","dormy","keisei","narita"]};
+const KEISEI=[[35.7110615,139.7736822],[35.7278,139.7707],[35.744,139.853],[35.751,139.868],[35.771,140.010],[35.779,140.318],[35.7738,140.3862]];
 const AREAS=[["숙소 (우에노)","dormy"],["긴자","kyubey"],["도쿄역","kitte"],["아사쿠사","sensoji"],["츠키지","tsukiji"],["츠키시마","monja"],["기요스미","kiyosumi"],["다이칸야마","tsite"],["키치조지","kichijoji"],["닛포리·야네센","yuyake"]];
 
 /* ---------- 시간·영업 판단 (도쿄 시간) ---------- */
@@ -468,9 +486,13 @@ function zoomToW(z){return z<=13?30:z===14?22:z===15?14:8;}
 function vecCenter(){const cx=view.x+view.w/2,cy=view.y+view.h/2;return{lat:LAT0-cy/K,lng:LNG0+cx/(CX*K)};}
 function ensureLeaflet(){if(lmap)return;$("#lmap").hidden=false;
   lmap=L.map("lmap",{zoomControl:false,attributionControl:true,tap:false}).setView([35.700,139.772],13);
-  for(const p of PLACES){if(p.offmap)continue;const html=`<div class="mk ${p.cat==="stay"?"stay":""}" data-id="${p.id}" style="--c:${CATS[p.cat].c}"><span class="lb">${esc(p.ko.replace(/\s*\(.*\)$/,"").replace(/^러닝: /,""))}</span><span class="pin"></span></div>`;
+  for(const p of PLACES){const html=`<div class="mk ${p.cat==="stay"?"stay":""}" data-id="${p.id}" style="--c:${CATS[p.cat].c}"><span class="lb">${esc(p.ko.replace(/\s*\(.*\)$/,"").replace(/^러닝: /,""))}</span><span class="pin"></span></div>`;
     const m=L.marker([p.lat,p.lng],{icon:L.divIcon({className:"",html,iconSize:[0,0],iconAnchor:[0,0]}),zIndexOffset:p.cat==="stay"?1000:0});m.on("click",()=>openSheet(p.id));lmk[p.id]=m;m.addTo(lmap);}
-  lmap.on("zoomend",placeMarkers);lmap.on("click",closeSheet);}
+  lmap.on("zoomend",placeMarkers);lmap.on("click",closeSheet);drawRoute();}
+let routeL=null;
+function routePts(){if(dayFilter==="all")return[];return(ROUTES[dayFilter]||[]).map(byId).filter(Boolean).map(p=>[p.lat,p.lng]);}
+function drawRoute(){const pts=routePts();const rp=$("#routePath");if(rp)rp.setAttribute("d",pts.length?toPath(pts):"");
+  if(lmap){if(routeL){lmap.removeLayer(routeL);routeL=null;}if(pts.length){routeL=L.polyline(pts,{color:getComputedStyle(document.documentElement).getPropertyValue("--route").trim()||"#1f2937",weight:3,dashArray:"7 5",opacity:.85}).addTo(lmap);}}}
 function setMode(m,announce){
   if(m>0&&!HAS_L)m=0;mode=m;store.set("mode",m);USE_L=m>0;
   $("#ztile").textContent=MODES[m].n;$("#ztile").hidden=!HAS_L;
@@ -496,6 +518,9 @@ function drawBase(){
   s.push(`<path d="${toPath(HIBIYA)}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="6 4" vector-effect="non-scaling-stroke" opacity=".75" stroke-linejoin="round"/>`);
   s.push(`<path d="${toPath(GINZA_L)}" fill="none" stroke="var(--c-cafe)" stroke-width="2.5" stroke-dasharray="6 4" vector-effect="non-scaling-stroke" opacity=".65" stroke-linejoin="round"/>`);
   s.push(`<path d="${toPath(OEDO)}" fill="none" stroke="var(--c-shop)" stroke-width="2.5" stroke-dasharray="6 4" vector-effect="non-scaling-stroke" opacity=".65" stroke-linejoin="round"/>`);
+  s.push(`<path d="${toPath(KEISEI)}" fill="none" stroke="var(--c-see)" stroke-width="2" stroke-dasharray="8 5" vector-effect="non-scaling-stroke" opacity=".6" stroke-linejoin="round"/>`);
+  const[ax,ay]=px(35.7738,140.3862);s.push(`<text class="svgtxt" x="${(ax-1).toFixed(1)}" y="${(ay+3).toFixed(1)}" text-anchor="end">成田空港 (スカイライナー約41分)</text>`);
+  s.push(`<path id="routePath" d="" fill="none" stroke="var(--route)" stroke-width="3" stroke-dasharray="7 5" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>`);
   for(const[n,la,lo]of STN){const[x,y]=px(la,lo);s.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="0.5" fill="var(--card)" stroke="var(--rail)" stroke-width="2" vector-effect="non-scaling-stroke"/><text class="svgtxt" x="${(x+0.9).toFixed(1)}" y="${(y-0.7).toFixed(1)}">${n}</text>`);}
   const[bx,by]=px(35.605,139.785);s.push(`<text class="svgtxt big" x="${bx}" y="${by}">東京湾</text>`);
   const[px1,py1]=px(35.6835,139.7555);s.push(`<text class="svgtxt sm" x="${px1}" y="${py1}" text-anchor="middle">皇居</text>`);
@@ -505,13 +530,13 @@ function drawBase(){
 function applyView(){if(USE_L){placeMarkers();return;}svg.setAttribute("viewBox",`${view.x} ${view.y} ${view.w} ${view.h}`);const r=$("#mapwrap").getBoundingClientRect();svg.style.setProperty("--fs",(12*view.w/Math.max(1,r.width))+"px");placeMarkers();}
 function fitAspect(){const r=$("#mapwrap").getBoundingClientRect();view.h=view.w*r.height/r.width;}
 function centerOn(lat,lng,w){if(USE_L){lmap.setView([lat,lng],w?wToZoom(w):lmap.getZoom());return;}const[x,y]=px(lat,lng);if(w)view.w=w;fitAspect();view.x=x-view.w/2;view.y=y-view.h/2;applyView();}
-function buildMarkers(){const wrap=$("#markers");wrap.innerHTML="";for(const p of PLACES){if(p.offmap)continue;const e=document.createElement("button");e.className="mk "+(p.cat==="stay"?"stay":"");e.dataset.id=p.id;e.style.setProperty("--c",CATS[p.cat].c);e.innerHTML=`<span class="lb">${esc(p.ko.replace(/\s*\(.*\)$/,"").replace(/^러닝: /,""))}</span><span class="pin"></span>`;e.addEventListener("click",ev=>{ev.stopPropagation();openSheet(p.id);});wrap.appendChild(e);}
+function buildMarkers(){const wrap=$("#markers");wrap.innerHTML="";for(const p of PLACES){const e=document.createElement("button");e.className="mk "+(p.cat==="stay"?"stay":"");e.dataset.id=p.id;e.style.setProperty("--c",CATS[p.cat].c);e.innerHTML=`<span class="lb">${esc(p.ko.replace(/\s*\(.*\)$/,"").replace(/^러닝: /,""))}</span><span class="pin"></span>`;e.addEventListener("click",ev=>{ev.stopPropagation();openSheet(p.id);});wrap.appendChild(e);}
   const m=document.createElement("div");m.className="mk me";m.id="meMk";m.innerHTML=`<span class="pin"></span>`;m.hidden=true;wrap.appendChild(m);}
-function placeMarkers(){if(USE_L){const z=lmap.getZoom();for(const p of PLACES){const m=lmk[p.id];if(!m)continue;const vis=catFilter==="all"||p.cat===catFilter;const el=m.getElement();if(vis&&!lmap.hasLayer(m))m.addTo(lmap);if(!vis&&lmap.hasLayer(m))lmap.removeLayer(m);if(el){const mk=el.querySelector(".mk");if(mk){mk.classList.toggle("lbl",z>=15||p.cat==="stay");mk.classList.toggle("done",done.has(p.id));mk.classList.toggle("sel",curId===p.id);}}}
+function placeMarkers(){if(USE_L){const z=lmap.getZoom();for(const p of PLACES){const m=lmk[p.id];if(!m)continue;const vis=catFilter==="all"||p.cat===catFilter;const el=m.getElement();if(vis&&!lmap.hasLayer(m))m.addTo(lmap);if(!vis&&lmap.hasLayer(m))lmap.removeLayer(m);if(el){const mk=el.querySelector(".mk");if(mk){mk.classList.toggle("lbl",z>=15||p.cat==="stay");mk.classList.toggle("done",done.has(p.id));mk.classList.toggle("sel",curId===p.id);mk.classList.toggle("dim",dayFilter!=="all"&&!(ROUTES[dayFilter]||[]).includes(p.id));}}}
     if(me){if(!meL){meL=L.circleMarker([me.lat,me.lng],{radius:8,color:"#fff",weight:2,fillColor:"#2f7cf6",fillOpacity:1}).addTo(lmap);}else meL.setLatLng([me.lat,me.lng]);}return;}
   const r=$("#mapwrap").getBoundingClientRect();const sc=r.width/view.w;const showLb=view.w<22;
   for(const e of $("#markers").children){if(e.id==="meMk"){if(me){const[x,y]=px(me.lat,me.lng);e.style.left=((x-view.x)*sc)+"px";e.style.top=((y-view.y)*sc)+"px";e.hidden=false;}else e.hidden=true;continue;}
-    const p=byId(e.dataset.id);const vis=catFilter==="all"||p.cat===catFilter;e.hidden=!vis;if(!vis)continue;const[x,y]=px(p.lat,p.lng);e.style.left=((x-view.x)*sc)+"px";e.style.top=((y-view.y)*sc)+"px";e.classList.toggle("lbl",showLb||p.cat==="stay");e.classList.toggle("done",done.has(p.id));}}
+    const p=byId(e.dataset.id);const vis=catFilter==="all"||p.cat===catFilter;e.hidden=!vis;if(!vis)continue;const[x,y]=px(p.lat,p.lng);e.style.left=((x-view.x)*sc)+"px";e.style.top=((y-view.y)*sc)+"px";e.classList.toggle("lbl",showLb||p.cat==="stay");e.classList.toggle("done",done.has(p.id));e.classList.toggle("dim",dayFilter!=="all"&&!(ROUTES[dayFilter]||[]).includes(p.id));}}
 // pan/zoom
 function bindPan(){const w=$("#mapwrap");let pts=new Map(),last=null,pinch=null;
   w.addEventListener("pointerdown",e=>{if(USE_L||e.target.closest(".mk"))return;w.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);if(pts.size===1)last=[e.clientX,e.clientY];if(pts.size===2){const a=[...pts.values()];pinch={d:Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]),w:view.w};}});
@@ -533,6 +558,8 @@ function bindPan(){const w=$("#mapwrap");let pts=new Map(),last=null,pinch=null;
 bindPan();
 function mapChips(){const el=$("#mapChips");el.innerHTML=`<button class="chip ${catFilter==="all"?"on":""}" data-c="all">전체</button>`+Object.entries(CATS).map(([k,v])=>`<button class="chip ${catFilter===k?"on":""}" data-c="${k}"><span class="dot" style="background:${v.c}"></span>${v.n}</button>`).join("");
   el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{catFilter=b.dataset.c;store.set("cat",catFilter);mapChips();placeMarkers();renderList();});
+  const md=$("#mapDays");md.innerHTML=`<button class="chip ${dayFilter==="all"?"on":""}" data-d="all">동선: 전체</button>`+DAYS.map(x=>`<button class="chip ${dayFilter==x.d?"on":""}" data-d="${x.d}">${x.d}일 (${x.w})</button>`).join("");
+  md.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{dayFilter=b.dataset.d==="all"?"all":+b.dataset.d;store.set("day",dayFilter);mapChips();drawRoute();placeMarkers();renderList();});
   $("#legend").innerHTML=`<span><i style="background:var(--rail)"></i>JR</span><span><i style="background:var(--accent)"></i>히비야선</span><span><i style="background:var(--c-cafe)"></i>긴자선</span><span><i style="background:var(--c-shop)"></i>오에도선</span>`;}
 
 /* ---------- 위치 ---------- */
@@ -577,7 +604,7 @@ $("#shX").onclick=closeSheet;$("#bjX").onclick=()=>$("#bigja").classList.remove(
 function rowHtml(p,extra){const now=tokyoNow();const st=openState(p,now);return`<button class="row ${done.has(p.id)?"done":""}" data-id="${p.id}" style="--c:${CATS[p.cat].c}"><span class="bar"></span><span class="nm">${esc(p.ko)}<span class="st">${esc(p.st)}</span><span class="ja">${esc(p.ja)}</span><span class="why">${esc(p.why)}</span></span><span class="rt">${extra||""}${p.h?stateLabel(st):""}</span></button>`;}
 function bindRows(el){el.querySelectorAll(".row").forEach(b=>b.onclick=()=>{openSheet(b.dataset.id);});}
 function renderList(){const ds=$("#dayStrip");ds.innerHTML=`<button class="${dayFilter==="all"?"on":""}" data-d="all"><small>전체</small><b>All</b></button>`+DAYS.map(x=>`<button class="${dayFilter==x.d?"on":""}" data-d="${x.d}"><small>${x.w}</small><b class="num">${x.d}</b></button>`).join("");
-  ds.querySelectorAll("button").forEach(b=>b.onclick=()=>{dayFilter=b.dataset.d==="all"?"all":+b.dataset.d;store.set("day",dayFilter);renderList();});
+  ds.querySelectorAll("button").forEach(b=>b.onclick=()=>{dayFilter=b.dataset.d==="all"?"all":+b.dataset.d;store.set("day",dayFilter);renderList();mapChips();drawRoute();placeMarkers();});
   const lc=$("#listChips");lc.innerHTML=`<button class="chip ${catFilter==="all"?"on":""}" data-c="all">전체</button>`+Object.entries(CATS).map(([k,v])=>`<button class="chip ${catFilter===k?"on":""}" data-c="${k}"><span class="dot" style="background:${v.c}"></span>${v.n}</button>`).join("");
   lc.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{catFilter=b.dataset.c;store.set("cat",catFilter);mapChips();placeMarkers();renderList();});
   let items=PLACES.filter(p=>catFilter==="all"||p.cat===catFilter);const body=$("#listBody");let html="";
@@ -637,7 +664,7 @@ $("#homeBtn").onclick=()=>{$("#cover").classList.remove("off");};
 /* ---------- 시작 ---------- */
 drawBase();buildMarkers();mapChips();renderList();renderNear();renderInfo();
 if(store.get("seen",false))$("#cover").classList.add("off");
-requestAnimationFrame(()=>{centerOn(35.700,139.772,30);setMode(mode);});
+requestAnimationFrame(()=>{centerOn(35.700,139.772,30);drawRoute();setMode(mode);});
 setTimeout(()=>locate(false),1200);
 setInterval(()=>{if($("#v-near").classList.contains("on"))renderNear();},60000);
 </script>
