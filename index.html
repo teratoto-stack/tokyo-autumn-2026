@@ -97,6 +97,10 @@ nav.tabs button.on{color:var(--accent)}
 header.top .t{text-align:left}
 header.top .jv{font-size:11px;letter-spacing:.06em;color:var(--accent);border:1px solid var(--line);border-radius:999px;padding:4px 10px;text-decoration:none}
 #lmap{position:absolute;inset:0}
+#gmap{position:absolute;inset:0}
+#gmap .mk{z-index:1}
+#gmap .mk.stay{z-index:2}
+#gmap .mk.sel{z-index:3}
 .leaflet-container{background:var(--bg2);font-family:var(--body)}
 .leaflet-div-icon{background:none;border:0}
 .leaflet-control-attribution{font-size:9px;background:rgba(255,255,255,.6)}
@@ -224,6 +228,7 @@ ul.chk li.ck{color:var(--mute);text-decoration:line-through}
         <svg id="mapsvg" xmlns="http://www.w3.org/2000/svg"></svg>
         <div id="markers"></div>
         <div id="lmap" hidden></div>
+        <div id="gmap" hidden></div>
       </div>
       <div class="mapui"><div class="chips" id="mapChips"></div><div class="chips" id="mapDays"></div></div>
       <div class="legend" id="legend"></div>
@@ -479,8 +484,27 @@ let view={x:0,y:0,w:80,h:120};
 const HAS_L=!!(typeof window.L!=="undefined"&&window.L.map);
 let USE_L=false;
 let lmap=null,lmk={},meL=null,tl=null;
-const MODES=[{n:"약도"},{n:"지리원",url:"https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png",attr:"国土地理院 淡色地図"},{n:"상세",url:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",attr:"&copy; OpenStreetMap contributors"}];
-let mode=HAS_L?Math.min(+store.get("mode",0)||0,2):0;
+const GKEY="AIzaSyAgHepjJK7T6h3scDfI7_yjXvnNyOVhi8A";
+const MODES=[{n:"구글",g:true},{n:"약도"},{n:"지리원",url:"https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png",attr:"国土地理院 淡色地図"},{n:"상세",url:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",attr:"&copy; OpenStreetMap contributors"}].filter(x=>(x.g?!!GKEY:true)&&(x.url?HAS_L:true));
+const VEC_IDX=MODES.findIndex(x=>!x.g&&!x.url);
+let mode=Math.min(+store.get("mode",0)||0,MODES.length-1);
+let USE_G=false,gmap=null,gOv=null,gRoute=null,gEls={},gMeEl=null,gLoading=false,gQueue=[];
+function loadGoogle(cb){if(window.google&&window.google.maps&&google.maps.Map){cb(true);return;}gQueue.push(cb);if(gLoading)return;gLoading=true;
+  const done=ok=>{if(!gLoading)return;gLoading=false;const q=gQueue;gQueue=[];q.forEach(f=>f(ok));};
+  window.__gmReady=()=>done(true);window.gm_authFailure=()=>{toast("구글맵 키 인증 실패. 약도로 표시합니다");setMode(VEC_IDX);};
+  const sc=document.createElement("script");sc.async=true;sc.onerror=()=>done(false);
+  sc.src="https://maps.googleapis.com/maps/api/js?key="+GKEY+"&language=ko&region=JP&v=weekly&loading=async&callback=__gmReady";
+  document.head.appendChild(sc);setTimeout(()=>done(false),12000);}
+function ensureGoogle(){if(gmap)return;$("#gmap").hidden=false;
+  gmap=new google.maps.Map($("#gmap"),{center:{lat:35.700,lng:139.772},zoom:13,disableDefaultUI:true,gestureHandling:"greedy",clickableIcons:false,styles:[{featureType:"poi.business",stylers:[{visibility:"off"}]}]});
+  class Ov extends google.maps.OverlayView{onAdd(){const d=document.createElement("div");d.style.cssText="position:absolute;left:0;top:0;width:0;height:0";this.div=d;
+      for(const p of PLACES){const e=document.createElement("button");e.className="mk "+(p.cat==="stay"?"stay":"");e.dataset.id=p.id;e.style.setProperty("--c",CATS[p.cat].c);e.innerHTML=`<span class="lb">${esc(p.ko.replace(/\s*\(.*\)$/,"").replace(/^러닝: /,""))}</span><span class="pin"></span>`;e.addEventListener("click",ev=>{ev.stopPropagation();openSheet(p.id);});gEls[p.id]=e;d.appendChild(e);}
+      gMeEl=document.createElement("div");gMeEl.className="mk me";gMeEl.innerHTML='<span class="pin"></span>';gMeEl.hidden=true;d.appendChild(gMeEl);
+      google.maps.OverlayView.preventMapHitsAndGesturesFrom(d);this.getPanes().overlayMouseTarget.appendChild(d);}
+    draw(){placeMarkers();}onRemove(){if(this.div)this.div.remove();}}
+  gOv=new Ov();gOv.setMap(gmap);gmap.addListener("click",closeSheet);drawRoute();}
+function curView(){if(USE_G&&gmap){const c=gmap.getCenter();return{lat:c.lat(),lng:c.lng(),z:gmap.getZoom()};}if(USE_L&&lmap){const c=lmap.getCenter();return{lat:c.lat,lng:c.lng,z:lmap.getZoom()};}const c=vecCenter();return{lat:c.lat,lng:c.lng,z:wToZoom(view.w)};}
+function showEngine(){$("#gmap").hidden=!USE_G;$("#lmap").hidden=!USE_L;const v=!USE_G&&!USE_L;$("#mapsvg").hidden=!v;$("#markers").hidden=!v;$("#legend").hidden=!v;}
 function wToZoom(w){return w>=25?13:w>=18?14:w>=11?15:16;}
 function zoomToW(z){return z<=13?30:z===14?22:z===15?14:8;}
 function vecCenter(){const cx=view.x+view.w/2,cy=view.y+view.h/2;return{lat:LAT0-cy/K,lng:LNG0+cx/(CX*K)};}
@@ -492,20 +516,20 @@ function ensureLeaflet(){if(lmap)return;$("#lmap").hidden=false;
 let routeL=null;
 function routePts(){if(dayFilter==="all")return[];return(ROUTES[dayFilter]||[]).map(byId).filter(Boolean).map(p=>[p.lat,p.lng]);}
 function drawRoute(){const pts=routePts();const rp=$("#routePath");if(rp)rp.setAttribute("d",pts.length?toPath(pts):"");
+  if(gmap){if(gRoute){gRoute.setMap(null);gRoute=null;}if(pts.length){const col=getComputedStyle(document.documentElement).getPropertyValue("--route").trim()||"#1f2937";gRoute=new google.maps.Polyline({path:pts.map(([lat,lng])=>({lat,lng})),strokeOpacity:0,icons:[{icon:{path:"M 0,-1 0,1",strokeOpacity:.85,strokeColor:col,strokeWeight:3,scale:3},offset:"0",repeat:"14px"}],map:gmap});}}
   if(lmap){if(routeL){lmap.removeLayer(routeL);routeL=null;}if(pts.length){routeL=L.polyline(pts,{color:getComputedStyle(document.documentElement).getPropertyValue("--route").trim()||"#1f2937",weight:3,dashArray:"7 5",opacity:.85}).addTo(lmap);}}}
 function setMode(m,announce){
-  if(m>0&&!HAS_L)m=0;mode=m;store.set("mode",m);USE_L=m>0;
-  $("#ztile").textContent=MODES[m].n;$("#ztile").hidden=!HAS_L;
-  if(USE_L){const c=vecCenter();const w=view.w;ensureLeaflet();
-    $("#lmap").hidden=false;$("#mapsvg").hidden=true;$("#markers").hidden=true;$("#legend").hidden=true;
+  if(m<0||m>=MODES.length)m=Math.max(0,VEC_IDX);const M=MODES[m];const cv=curView();
+  const finish=()=>{mode=m;store.set("mode",m);$("#ztile").textContent=M.n;$("#ztile").hidden=MODES.length<2;if(announce)toast("지도: "+M.n);};
+  if(M.g){loadGoogle(ok=>{if(!ok){toast("구글맵을 불러오지 못해 약도로 표시합니다");setMode(VEC_IDX);return;}
+      ensureGoogle();USE_G=true;USE_L=false;showEngine();google.maps.event.trigger(gmap,"resize");gmap.setCenter({lat:cv.lat,lng:cv.lng});gmap.setZoom(cv.z);placeMarkers();drawRoute();finish();});
+    return;}
+  if(M.url){ensureLeaflet();USE_L=true;USE_G=false;showEngine();
     if(tl){lmap.removeLayer(tl);tl=null;}let errs=0,oks=0;
-    tl=L.tileLayer(MODES[m].url,{maxZoom:18,attribution:MODES[m].attr}).addTo(lmap);
-    tl.on("tileload",()=>{oks++;});tl.on("tileerror",()=>{errs++;if(oks===0&&errs>=4&&mode===m){setMode(0);toast("실지도를 불러오지 못해 약도로 표시합니다");}});
-    lmap.invalidateSize();lmap.setView([c.lat,c.lng],wToZoom(w));placeMarkers();
-  }else{let c=null,z=13;if(lmap){c=lmap.getCenter();z=lmap.getZoom();}
-    $("#lmap").hidden=true;$("#mapsvg").hidden=false;$("#markers").hidden=false;$("#legend").hidden=false;
-    if(c)centerOn(c.lat,c.lng,zoomToW(z));else{fitAspect();applyView();}}
-  if(announce)toast("지도: "+MODES[m].n);}
+    tl=L.tileLayer(M.url,{maxZoom:18,attribution:M.attr}).addTo(lmap);
+    tl.on("tileload",()=>{oks++;});tl.on("tileerror",()=>{errs++;if(oks===0&&errs>=4&&mode===m){setMode(VEC_IDX);toast("실지도를 불러오지 못해 약도로 표시합니다");}});
+    lmap.invalidateSize();lmap.setView([cv.lat,cv.lng],cv.z);placeMarkers();drawRoute();finish();return;}
+  USE_L=false;USE_G=false;showEngine();centerOn(cv.lat,cv.lng,zoomToW(cv.z));drawRoute();finish();}
 function drawBase(){
   const s=[];
   s.push(`<rect x="-500" y="-500" width="1500" height="1500" fill="var(--bg2)"/>`);
@@ -527,33 +551,36 @@ function drawBase(){
   const[ux,uy]=px(35.7175,139.7745);s.push(`<text class="svgtxt sm" x="${ux}" y="${uy}" text-anchor="middle">上野公園</text>`);
   svg.innerHTML=s.join("");
 }
-function applyView(){if(USE_L){placeMarkers();return;}svg.setAttribute("viewBox",`${view.x} ${view.y} ${view.w} ${view.h}`);const r=$("#mapwrap").getBoundingClientRect();svg.style.setProperty("--fs",(12*view.w/Math.max(1,r.width))+"px");placeMarkers();}
+function applyView(){if(USE_L||USE_G){placeMarkers();return;}svg.setAttribute("viewBox",`${view.x} ${view.y} ${view.w} ${view.h}`);const r=$("#mapwrap").getBoundingClientRect();svg.style.setProperty("--fs",(12*view.w/Math.max(1,r.width))+"px");placeMarkers();}
 function fitAspect(){const r=$("#mapwrap").getBoundingClientRect();view.h=view.w*r.height/r.width;}
-function centerOn(lat,lng,w){if(USE_L){lmap.setView([lat,lng],w?wToZoom(w):lmap.getZoom());return;}const[x,y]=px(lat,lng);if(w)view.w=w;fitAspect();view.x=x-view.w/2;view.y=y-view.h/2;applyView();}
+function centerOn(lat,lng,w){if(USE_G){gmap.setCenter({lat,lng});if(w)gmap.setZoom(wToZoom(w));return;}if(USE_L){lmap.setView([lat,lng],w?wToZoom(w):lmap.getZoom());return;}const[x,y]=px(lat,lng);if(w)view.w=w;fitAspect();view.x=x-view.w/2;view.y=y-view.h/2;applyView();}
 function buildMarkers(){const wrap=$("#markers");wrap.innerHTML="";for(const p of PLACES){const e=document.createElement("button");e.className="mk "+(p.cat==="stay"?"stay":"");e.dataset.id=p.id;e.style.setProperty("--c",CATS[p.cat].c);e.innerHTML=`<span class="lb">${esc(p.ko.replace(/\s*\(.*\)$/,"").replace(/^러닝: /,""))}</span><span class="pin"></span>`;e.addEventListener("click",ev=>{ev.stopPropagation();openSheet(p.id);});wrap.appendChild(e);}
   const m=document.createElement("div");m.className="mk me";m.id="meMk";m.innerHTML=`<span class="pin"></span>`;m.hidden=true;wrap.appendChild(m);}
-function placeMarkers(){if(USE_L){const z=lmap.getZoom();for(const p of PLACES){const m=lmk[p.id];if(!m)continue;const vis=catFilter==="all"||p.cat===catFilter;const el=m.getElement();if(vis&&!lmap.hasLayer(m))m.addTo(lmap);if(!vis&&lmap.hasLayer(m))lmap.removeLayer(m);if(el){const mk=el.querySelector(".mk");if(mk){mk.classList.toggle("lbl",z>=15||p.cat==="stay");mk.classList.toggle("done",done.has(p.id));mk.classList.toggle("sel",curId===p.id);mk.classList.toggle("dim",dayFilter!=="all"&&!(ROUTES[dayFilter]||[]).includes(p.id));}}}
+function placeMarkers(){if(USE_G){if(!gOv||!gOv.getProjection())return;const pr=gOv.getProjection();const z=gmap.getZoom();
+    for(const p of PLACES){const e=gEls[p.id];if(!e)continue;const vis=catFilter==="all"||p.cat===catFilter;e.hidden=!vis;if(!vis)continue;const pt=pr.fromLatLngToDivPixel(new google.maps.LatLng(p.lat,p.lng));e.style.left=pt.x+"px";e.style.top=pt.y+"px";e.classList.toggle("lbl",z>=15||p.cat==="stay");e.classList.toggle("done",done.has(p.id));e.classList.toggle("sel",curId===p.id);e.classList.toggle("dim",dayFilter!=="all"&&!(ROUTES[dayFilter]||[]).includes(p.id));}
+    if(gMeEl){if(me){const pt=pr.fromLatLngToDivPixel(new google.maps.LatLng(me.lat,me.lng));gMeEl.style.left=pt.x+"px";gMeEl.style.top=pt.y+"px";gMeEl.hidden=false;}else gMeEl.hidden=true;}return;}
+  if(USE_L){const z=lmap.getZoom();for(const p of PLACES){const m=lmk[p.id];if(!m)continue;const vis=catFilter==="all"||p.cat===catFilter;const el=m.getElement();if(vis&&!lmap.hasLayer(m))m.addTo(lmap);if(!vis&&lmap.hasLayer(m))lmap.removeLayer(m);if(el){const mk=el.querySelector(".mk");if(mk){mk.classList.toggle("lbl",z>=15||p.cat==="stay");mk.classList.toggle("done",done.has(p.id));mk.classList.toggle("sel",curId===p.id);mk.classList.toggle("dim",dayFilter!=="all"&&!(ROUTES[dayFilter]||[]).includes(p.id));}}}
     if(me){if(!meL){meL=L.circleMarker([me.lat,me.lng],{radius:8,color:"#fff",weight:2,fillColor:"#2f7cf6",fillOpacity:1}).addTo(lmap);}else meL.setLatLng([me.lat,me.lng]);}return;}
   const r=$("#mapwrap").getBoundingClientRect();const sc=r.width/view.w;const showLb=view.w<22;
   for(const e of $("#markers").children){if(e.id==="meMk"){if(me){const[x,y]=px(me.lat,me.lng);e.style.left=((x-view.x)*sc)+"px";e.style.top=((y-view.y)*sc)+"px";e.hidden=false;}else e.hidden=true;continue;}
     const p=byId(e.dataset.id);const vis=catFilter==="all"||p.cat===catFilter;e.hidden=!vis;if(!vis)continue;const[x,y]=px(p.lat,p.lng);e.style.left=((x-view.x)*sc)+"px";e.style.top=((y-view.y)*sc)+"px";e.classList.toggle("lbl",showLb||p.cat==="stay");e.classList.toggle("done",done.has(p.id));e.classList.toggle("dim",dayFilter!=="all"&&!(ROUTES[dayFilter]||[]).includes(p.id));}}
 // pan/zoom
 function bindPan(){const w=$("#mapwrap");let pts=new Map(),last=null,pinch=null;
-  w.addEventListener("pointerdown",e=>{if(USE_L||e.target.closest(".mk"))return;w.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);if(pts.size===1)last=[e.clientX,e.clientY];if(pts.size===2){const a=[...pts.values()];pinch={d:Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]),w:view.w};}});
-  w.addEventListener("pointermove",e=>{if(USE_L||!pts.has(e.pointerId))return;pts.set(e.pointerId,[e.clientX,e.clientY]);const r=w.getBoundingClientRect();const sc=view.w/r.width;
+  w.addEventListener("pointerdown",e=>{if(USE_L||USE_G||e.target.closest(".mk"))return;w.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);if(pts.size===1)last=[e.clientX,e.clientY];if(pts.size===2){const a=[...pts.values()];pinch={d:Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]),w:view.w};}});
+  w.addEventListener("pointermove",e=>{if(USE_L||USE_G||!pts.has(e.pointerId))return;pts.set(e.pointerId,[e.clientX,e.clientY]);const r=w.getBoundingClientRect();const sc=view.w/r.width;
     if(pts.size===1&&last){view.x-=(e.clientX-last[0])*sc;view.y-=(e.clientY-last[1])*sc;last=[e.clientX,e.clientY];applyView();}
     else if(pts.size===2&&pinch){const a=[...pts.values()];const d=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);const nw=Math.min(260,Math.max(3,pinch.w*pinch.d/d));const cx=(a[0][0]+a[1][0])/2-r.left,cy=(a[0][1]+a[1][1])/2-r.top;zoomAt(nw,cx,cy);}});
   const up=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch=null;if(pts.size===0)last=null;else if(pts.size===1){const a=[...pts.values()][0];last=a;}};
   w.addEventListener("pointerup",up);w.addEventListener("pointercancel",up);
-  w.addEventListener("wheel",e=>{if(USE_L)return;e.preventDefault();const r=w.getBoundingClientRect();zoomAt(Math.min(260,Math.max(3,view.w*(e.deltaY>0?1.15:0.87))),e.clientX-r.left,e.clientY-r.top);},{passive:false});
-  w.addEventListener("click",()=>{if(!USE_L)closeSheet();});
+  w.addEventListener("wheel",e=>{if(USE_L||USE_G)return;e.preventDefault();const r=w.getBoundingClientRect();zoomAt(Math.min(260,Math.max(3,view.w*(e.deltaY>0?1.15:0.87))),e.clientX-r.left,e.clientY-r.top);},{passive:false});
+  w.addEventListener("click",()=>{if(!USE_L&&!USE_G)closeSheet();});
   function zoomAt(nw,cx,cy){const r=w.getBoundingClientRect();const fx=cx/r.width,fy=cy/r.height;const nh=nw*r.height/r.width;view.x=view.x+fx*(view.w-nw);view.y=view.y+fy*(view.h-nh);view.w=nw;view.h=nh;applyView();}
-  $("#zin").onclick=()=>{if(USE_L){lmap.zoomIn();return;}const r=w.getBoundingClientRect();zoomAt(Math.max(3,view.w*0.7),r.width/2,r.height/2);};
-  $("#zout").onclick=()=>{if(USE_L){lmap.zoomOut();return;}const r=w.getBoundingClientRect();zoomAt(Math.min(260,view.w*1.45),r.width/2,r.height/2);};
+  $("#zin").onclick=()=>{if(USE_G){gmap.setZoom(gmap.getZoom()+1);return;}if(USE_L){lmap.zoomIn();return;}const r=w.getBoundingClientRect();zoomAt(Math.max(3,view.w*0.7),r.width/2,r.height/2);};
+  $("#zout").onclick=()=>{if(USE_G){gmap.setZoom(gmap.getZoom()-1);return;}if(USE_L){lmap.zoomOut();return;}const r=w.getBoundingClientRect();zoomAt(Math.min(260,view.w*1.45),r.width/2,r.height/2);};
   $("#zhome").onclick=()=>centerOn(35.709,139.776,14);
   $("#zme").onclick=()=>locate(true);
   $("#ztile").onclick=()=>setMode((mode+1)%MODES.length,true);
-  window.addEventListener("resize",()=>{if(USE_L){if(lmap)lmap.invalidateSize();}else{fitAspect();applyView();}});
+  window.addEventListener("resize",()=>{if(USE_G){google.maps.event.trigger(gmap,"resize");}else if(USE_L){if(lmap)lmap.invalidateSize();}else{fitAspect();applyView();}});
 }
 bindPan();
 function mapChips(){const el=$("#mapChips");el.innerHTML=`<button class="chip ${catFilter==="all"?"on":""}" data-c="all">전체</button>`+Object.entries(CATS).map(([k,v])=>`<button class="chip ${catFilter===k?"on":""}" data-c="${k}"><span class="dot" style="background:${v.c}"></span>${v.n}</button>`).join("");
@@ -656,9 +683,9 @@ function renderInfo(){const ck=new Set(store.get("chk",[]));
   $("#infoBody").querySelectorAll("input[type=checkbox]").forEach(c=>c.onchange=()=>{const i=+c.id.slice(2);if(c.checked)ck.add(i);else ck.delete(i);store.set("chk",[...ck]);c.closest("li").classList.toggle("ck",c.checked);});}
 
 /* ---------- 탭·커버 ---------- */
-function showView(v){document.querySelectorAll(".view").forEach(e=>e.classList.toggle("on",e.id==="v-"+v));document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));closeSheet();if(v==="map"){if(USE_L){setTimeout(()=>lmap.invalidateSize(),50);}else{fitAspect();applyView();}}if(v==="near")renderNear();if(v==="list")renderList();}
+function showView(v){document.querySelectorAll(".view").forEach(e=>e.classList.toggle("on",e.id==="v-"+v));document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));closeSheet();if(v==="map"){if(USE_G){setTimeout(()=>{google.maps.event.trigger(gmap,"resize");placeMarkers();},50);}else if(USE_L){setTimeout(()=>lmap.invalidateSize(),50);}else{fitAspect();applyView();}}if(v==="near")renderNear();if(v==="list")renderList();}
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>showView(b.dataset.v));
-$("#goBtn").onclick=()=>{$("#cover").classList.add("off");store.set("seen",true);if(USE_L){setTimeout(()=>lmap.invalidateSize(),50);}else{fitAspect();applyView();}};
+$("#goBtn").onclick=()=>{$("#cover").classList.add("off");store.set("seen",true);if(USE_G){setTimeout(()=>{google.maps.event.trigger(gmap,"resize");placeMarkers();},50);}else if(USE_L){setTimeout(()=>lmap.invalidateSize(),50);}else{fitAspect();applyView();}};
 $("#homeBtn").onclick=()=>{$("#cover").classList.remove("off");};
 
 /* ---------- 시작 ---------- */
