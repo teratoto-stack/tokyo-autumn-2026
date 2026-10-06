@@ -458,19 +458,32 @@ const STN=[["上野",35.7141,139.7774],["東京",35.6812,139.7671],["秋葉原",
 const toPath=(arr,close)=>arr.map((c,i)=>(i?"L":"M")+px(c[0],c[1]).map(v=>v.toFixed(1)).join(" ")).join(" ")+(close?"Z":"");
 const svg=$("#mapsvg");
 let view={x:0,y:0,w:80,h:120};
-let USE_L=!!(typeof window.L!=="undefined"&&window.L.map);
-let lmap=null,lmk={},meL=null;
-function wToZoom(w){return w>=25?13:w>=12?15:16;}
-function initLeaflet(){$("#lmap").hidden=false;$("#mapsvg").hidden=true;$("#markers").hidden=true;$("#legend").hidden=true;
+const HAS_L=!!(typeof window.L!=="undefined"&&window.L.map);
+let USE_L=false;
+let lmap=null,lmk={},meL=null,tl=null;
+const MODES=[{n:"약도"},{n:"지리원",url:"https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png",attr:"国土地理院 淡色地図"},{n:"상세",url:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",attr:"&copy; OpenStreetMap contributors"}];
+let mode=HAS_L?Math.min(+store.get("mode",0)||0,2):0;
+function wToZoom(w){return w>=25?13:w>=18?14:w>=11?15:16;}
+function zoomToW(z){return z<=13?30:z===14?22:z===15?14:8;}
+function vecCenter(){const cx=view.x+view.w/2,cy=view.y+view.h/2;return{lat:LAT0-cy/K,lng:LNG0+cx/(CX*K)};}
+function ensureLeaflet(){if(lmap)return;$("#lmap").hidden=false;
   lmap=L.map("lmap",{zoomControl:false,attributionControl:true,tap:false}).setView([35.700,139.772],13);
-  const TILES=[["https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png","国土地理院 淡色地図","심플"],["https://tile.openstreetmap.org/{z}/{x}/{y}.png","&copy; OpenStreetMap contributors","상세"]];
-  let ti=Math.min(store.get("tiles",0),1),tl=null,errs=0,oks=0;
-  const useTiles=i=>{ti=i;if(tl)lmap.removeLayer(tl);errs=0;oks=0;tl=L.tileLayer(TILES[i][0],{maxZoom:18,subdomains:"abcd",attribution:TILES[i][1]}).addTo(lmap);$("#ztile").textContent=TILES[i][2];
-    tl.on("tileload",()=>{oks++;});tl.on("tileerror",()=>{errs++;if(oks===0&&errs>=3){const n=(ti+1)%TILES.length;if(n!==0||ti!==TILES.length-1){useTiles(n);toast("지도 서버를 바꿔 다시 불러옵니다");}else fallbackVector();}});};
-  useTiles(ti);$("#ztile").hidden=false;$("#ztile").onclick=()=>{useTiles((ti+1)%TILES.length);store.set("tiles",ti);toast("지도 스타일: "+TILES[ti][2]);};
   for(const p of PLACES){if(p.offmap)continue;const html=`<div class="mk ${p.cat==="stay"?"stay":""}" data-id="${p.id}" style="--c:${CATS[p.cat].c}"><span class="lb">${esc(p.ko.replace(/\s*\(.*\)$/,"").replace(/^러닝: /,""))}</span><span class="pin"></span></div>`;
     const m=L.marker([p.lat,p.lng],{icon:L.divIcon({className:"",html,iconSize:[0,0],iconAnchor:[0,0]}),zIndexOffset:p.cat==="stay"?1000:0});m.on("click",()=>openSheet(p.id));lmk[p.id]=m;m.addTo(lmap);}
   lmap.on("zoomend",placeMarkers);lmap.on("click",closeSheet);}
+function setMode(m,announce){
+  if(m>0&&!HAS_L)m=0;mode=m;store.set("mode",m);USE_L=m>0;
+  $("#ztile").textContent=MODES[m].n;$("#ztile").hidden=!HAS_L;
+  if(USE_L){const c=vecCenter();const w=view.w;ensureLeaflet();
+    $("#lmap").hidden=false;$("#mapsvg").hidden=true;$("#markers").hidden=true;$("#legend").hidden=true;
+    if(tl){lmap.removeLayer(tl);tl=null;}let errs=0,oks=0;
+    tl=L.tileLayer(MODES[m].url,{maxZoom:18,attribution:MODES[m].attr}).addTo(lmap);
+    tl.on("tileload",()=>{oks++;});tl.on("tileerror",()=>{errs++;if(oks===0&&errs>=4&&mode===m){setMode(0);toast("실지도를 불러오지 못해 약도로 표시합니다");}});
+    lmap.invalidateSize();lmap.setView([c.lat,c.lng],wToZoom(w));placeMarkers();
+  }else{let c=null,z=13;if(lmap){c=lmap.getCenter();z=lmap.getZoom();}
+    $("#lmap").hidden=true;$("#mapsvg").hidden=false;$("#markers").hidden=false;$("#legend").hidden=false;
+    if(c)centerOn(c.lat,c.lng,zoomToW(z));else{fitAspect();applyView();}}
+  if(announce)toast("지도: "+MODES[m].n);}
 function drawBase(){
   const s=[];
   s.push(`<rect x="-500" y="-500" width="1500" height="1500" fill="var(--bg2)"/>`);
@@ -492,7 +505,6 @@ function drawBase(){
 function applyView(){if(USE_L){placeMarkers();return;}svg.setAttribute("viewBox",`${view.x} ${view.y} ${view.w} ${view.h}`);const r=$("#mapwrap").getBoundingClientRect();svg.style.setProperty("--fs",(12*view.w/Math.max(1,r.width))+"px");placeMarkers();}
 function fitAspect(){const r=$("#mapwrap").getBoundingClientRect();view.h=view.w*r.height/r.width;}
 function centerOn(lat,lng,w){if(USE_L){lmap.setView([lat,lng],w?wToZoom(w):lmap.getZoom());return;}const[x,y]=px(lat,lng);if(w)view.w=w;fitAspect();view.x=x-view.w/2;view.y=y-view.h/2;applyView();}
-const mkEl=document.createElement("div");mkEl.id="markers";
 function buildMarkers(){const wrap=$("#markers");wrap.innerHTML="";for(const p of PLACES){if(p.offmap)continue;const e=document.createElement("button");e.className="mk "+(p.cat==="stay"?"stay":"");e.dataset.id=p.id;e.style.setProperty("--c",CATS[p.cat].c);e.innerHTML=`<span class="lb">${esc(p.ko.replace(/\s*\(.*\)$/,"").replace(/^러닝: /,""))}</span><span class="pin"></span>`;e.addEventListener("click",ev=>{ev.stopPropagation();openSheet(p.id);});wrap.appendChild(e);}
   const m=document.createElement("div");m.className="mk me";m.id="meMk";m.innerHTML=`<span class="pin"></span>`;m.hidden=true;wrap.appendChild(m);}
 function placeMarkers(){if(USE_L){const z=lmap.getZoom();for(const p of PLACES){const m=lmk[p.id];if(!m)continue;const vis=catFilter==="all"||p.cat===catFilter;const el=m.getElement();if(vis&&!lmap.hasLayer(m))m.addTo(lmap);if(!vis&&lmap.hasLayer(m))lmap.removeLayer(m);if(el){const mk=el.querySelector(".mk");if(mk){mk.classList.toggle("lbl",z>=15||p.cat==="stay");mk.classList.toggle("done",done.has(p.id));mk.classList.toggle("sel",curId===p.id);}}}
@@ -501,22 +513,22 @@ function placeMarkers(){if(USE_L){const z=lmap.getZoom();for(const p of PLACES){
   for(const e of $("#markers").children){if(e.id==="meMk"){if(me){const[x,y]=px(me.lat,me.lng);e.style.left=((x-view.x)*sc)+"px";e.style.top=((y-view.y)*sc)+"px";e.hidden=false;}else e.hidden=true;continue;}
     const p=byId(e.dataset.id);const vis=catFilter==="all"||p.cat===catFilter;e.hidden=!vis;if(!vis)continue;const[x,y]=px(p.lat,p.lng);e.style.left=((x-view.x)*sc)+"px";e.style.top=((y-view.y)*sc)+"px";e.classList.toggle("lbl",showLb||p.cat==="stay");e.classList.toggle("done",done.has(p.id));}}
 // pan/zoom
-function fallbackVector(){if(!USE_L)return;try{lmap.remove();}catch(e){}lmap=null;lmk={};meL=null;USE_L=false;$("#lmap").hidden=true;$("#ztile").hidden=true;$("#mapsvg").hidden=false;$("#markers").hidden=false;$("#legend").hidden=false;drawBase();buildMarkers();bindPan();fitAspect();centerOn(35.700,139.772,30);toast("실지도를 불러올 수 없어 약도로 표시합니다. Chrome에서 열면 실지도가 보입니다");}
-function bindPan(){const w=$("#mapwrap");let pts=new Map(),last=null,pinch=null;if(USE_L){$("#zin").onclick=()=>lmap.zoomIn();$("#zout").onclick=()=>lmap.zoomOut();$("#zhome").onclick=()=>centerOn(35.709,139.776,14);$("#zme").onclick=()=>locate(true);window.addEventListener("resize",()=>{if(lmap)lmap.invalidateSize();});return;}
-  w.addEventListener("pointerdown",e=>{if(e.target.closest(".mk"))return;w.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);if(pts.size===1)last=[e.clientX,e.clientY];if(pts.size===2){const a=[...pts.values()];pinch={d:Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]),w:view.w};}});
-  w.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,[e.clientX,e.clientY]);const r=w.getBoundingClientRect();const sc=view.w/r.width;
+function bindPan(){const w=$("#mapwrap");let pts=new Map(),last=null,pinch=null;
+  w.addEventListener("pointerdown",e=>{if(USE_L||e.target.closest(".mk"))return;w.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);if(pts.size===1)last=[e.clientX,e.clientY];if(pts.size===2){const a=[...pts.values()];pinch={d:Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]),w:view.w};}});
+  w.addEventListener("pointermove",e=>{if(USE_L||!pts.has(e.pointerId))return;pts.set(e.pointerId,[e.clientX,e.clientY]);const r=w.getBoundingClientRect();const sc=view.w/r.width;
     if(pts.size===1&&last){view.x-=(e.clientX-last[0])*sc;view.y-=(e.clientY-last[1])*sc;last=[e.clientX,e.clientY];applyView();}
     else if(pts.size===2&&pinch){const a=[...pts.values()];const d=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);const nw=Math.min(260,Math.max(3,pinch.w*pinch.d/d));const cx=(a[0][0]+a[1][0])/2-r.left,cy=(a[0][1]+a[1][1])/2-r.top;zoomAt(nw,cx,cy);}});
   const up=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch=null;if(pts.size===0)last=null;else if(pts.size===1){const a=[...pts.values()][0];last=a;}};
   w.addEventListener("pointerup",up);w.addEventListener("pointercancel",up);
-  w.addEventListener("wheel",e=>{e.preventDefault();const r=w.getBoundingClientRect();zoomAt(Math.min(260,Math.max(3,view.w*(e.deltaY>0?1.15:0.87))),e.clientX-r.left,e.clientY-r.top);},{passive:false});
-  w.addEventListener("click",()=>closeSheet());
+  w.addEventListener("wheel",e=>{if(USE_L)return;e.preventDefault();const r=w.getBoundingClientRect();zoomAt(Math.min(260,Math.max(3,view.w*(e.deltaY>0?1.15:0.87))),e.clientX-r.left,e.clientY-r.top);},{passive:false});
+  w.addEventListener("click",()=>{if(!USE_L)closeSheet();});
   function zoomAt(nw,cx,cy){const r=w.getBoundingClientRect();const fx=cx/r.width,fy=cy/r.height;const nh=nw*r.height/r.width;view.x=view.x+fx*(view.w-nw);view.y=view.y+fy*(view.h-nh);view.w=nw;view.h=nh;applyView();}
-  $("#zin").onclick=()=>{const r=w.getBoundingClientRect();zoomAt(Math.max(3,view.w*0.7),r.width/2,r.height/2);};
-  $("#zout").onclick=()=>{const r=w.getBoundingClientRect();zoomAt(Math.min(260,view.w*1.45),r.width/2,r.height/2);};
+  $("#zin").onclick=()=>{if(USE_L){lmap.zoomIn();return;}const r=w.getBoundingClientRect();zoomAt(Math.max(3,view.w*0.7),r.width/2,r.height/2);};
+  $("#zout").onclick=()=>{if(USE_L){lmap.zoomOut();return;}const r=w.getBoundingClientRect();zoomAt(Math.min(260,view.w*1.45),r.width/2,r.height/2);};
   $("#zhome").onclick=()=>centerOn(35.709,139.776,14);
   $("#zme").onclick=()=>locate(true);
-  window.addEventListener("resize",()=>{if(!USE_L){fitAspect();applyView();}});
+  $("#ztile").onclick=()=>setMode((mode+1)%MODES.length,true);
+  window.addEventListener("resize",()=>{if(USE_L){if(lmap)lmap.invalidateSize();}else{fitAspect();applyView();}});
 }
 bindPan();
 function mapChips(){const el=$("#mapChips");el.innerHTML=`<button class="chip ${catFilter==="all"?"on":""}" data-c="all">전체</button>`+Object.entries(CATS).map(([k,v])=>`<button class="chip ${catFilter===k?"on":""}" data-c="${k}"><span class="dot" style="background:${v.c}"></span>${v.n}</button>`).join("");
@@ -623,9 +635,9 @@ $("#goBtn").onclick=()=>{$("#cover").classList.add("off");store.set("seen",true)
 $("#homeBtn").onclick=()=>{$("#cover").classList.remove("off");};
 
 /* ---------- 시작 ---------- */
-if(USE_L){initLeaflet();}else{drawBase();buildMarkers();}mapChips();renderList();renderNear();renderInfo();
+drawBase();buildMarkers();mapChips();renderList();renderNear();renderInfo();
 if(store.get("seen",false))$("#cover").classList.add("off");
-requestAnimationFrame(()=>{if(USE_L){lmap.invalidateSize();placeMarkers();}else centerOn(35.700,139.772,30);});
+requestAnimationFrame(()=>{centerOn(35.700,139.772,30);setMode(mode);});
 setTimeout(()=>locate(false),1200);
 setInterval(()=>{if($("#v-near").classList.contains("on"))renderNear();},60000);
 </script>
