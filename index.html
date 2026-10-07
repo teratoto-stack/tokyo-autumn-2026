@@ -426,7 +426,7 @@ const PLACES=[
 
 {id:"hijiri",src:"유튜브 (10/5·10/6 영상)",ko:"오차노미즈 히지리바시 · 진보초",ja:"聖橋・神保町",cat:"see",st:"대안·옵션",area:"기타",days:[],lat:35.6997231,lng:139.7655029,
  why:"철도 뷰포인트와 헌책방·킷사텐 거리. 3~4시간 산책. 비 오거나 일정 바뀔 때의 대안.",note:"",hoursText:"",h:null,how:"오카치마치→아키하바라 환승 10분 안쪽."},
-{id:"nact",src:"요한 요청 · Jarvis 조사",ko:"국립신미술관 — 루브르미술관전 르네상스",ja:"国立新美術館 ルーヴル美術館展 ルネサンス",cat:"see",st:"확정",area:"기타",days:[],lat:35.6653,lng:139.7265,
+{id:"nact",src:"Jarvis 조사",ko:"국립신미술관 — 루브르미술관전 르네상스",ja:"国立新美術館 ルーヴル美術館展 ルネサンス",cat:"see",st:"확정",area:"기타",days:[],lat:35.6653,lng:139.7265,
  why:"다빈치 〈라 벨 페로니에르〉 첫 일본 공개 포함 루브르 소장 50여 점. 2026.09.09~12.13. (피카소전은 9/21 종료.)",note:"기획전시실 1E. 당일권 일반 2,400엔(전매 2,200엔, e-tix). 10/22(목)는 18:00 폐관·입장 마감 17:30 — 16:30 전 도착. 화요일 휴관.",hoursText:"10:00~18:00 (금·토 20:00) · 화 휴관",h:{closed:[2],d:{[D]:[["10:00","18:00"]],5:[["10:00","20:00"]],6:[["10:00","20:00"]]}},how:"도자이선 와세다 → 다카다노바바 환승 없이: 와세다 → 이다바시(도자이) → 오에도선 롯폰기 약 30분. 롯폰기역 7번 출구 직결."},
 
 {id:"azabudai",src:"유튜브 (10/5·10/6 영상)",ko:"아자부다이 힐즈 스카이 로비",ja:"麻布台ヒルズ スカイロビー",cat:"see",st:"확정",area:"기타",days:[],lat:35.6612443,lng:139.7406186,
@@ -511,7 +511,11 @@ function stateLabel(st){if(st.s===0)return`<span class="open">영업 중 · ~${s
 /* ---------- 상태 ---------- */
 const store={get(k,d){try{const v=localStorage.getItem("tk_"+k);return v===null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem("tk_"+k,JSON.stringify(v));}catch(e){}}};
 let done=new Set(store.get("done",[]));
-let must=new Set(store.get("must",[]));let mustOnly=!!store.get("mustOnly",false);
+const MUST_DEFAULT=[];
+let must=new Set([...MUST_DEFAULT,...store.get("must",[])]);let mustOnly=!!store.get("mustOnly",false);
+async function shareMust(){if(!must.size){toast("필수 방문지가 없습니다");return;}const url=location.origin+location.pathname+"#must="+[...must].join(",");const names=[...must].map(id=>byId(id)).filter(Boolean).map(p=>"★ "+p.ko.replace(/\s*\(.*\)$/,"")).join("\n");const text=`도쿄 필수 방문지 ${must.size}곳\n${names}\n\n아래 링크를 열면 내 앱에도 똑같이 표시됩니다:\n${url}`;
+  try{if(navigator.share){await navigator.share({title:"도쿄 필수 방문지",text});return;}}catch(e){if(e&&e.name==="AbortError")return;}
+  try{await navigator.clipboard.writeText(text);toast("공유 문구를 복사했습니다. 카톡에 붙여넣기");}catch(e){prompt("복사해서 보내세요",url);}}
 function toggleMust(id){if(must.has(id))must.delete(id);else must.add(id);store.set("must",[...must]);}
 function setMustOnly(v){mustOnly=!!v;store.set("mustOnly",mustOnly);}
 let me=null; // {lat,lng}
@@ -790,7 +794,8 @@ function renderList(){const ds=$("#dayStrip");ds.innerHTML=`<button class="${day
   const lc=$("#listChips");lc.innerHTML=mustChip()+`<button class="chip ${catSel.size===0?"on":""}" data-c="all">전체</button>`+Object.entries(CATS).map(([k,v])=>`<button class="chip ${catSel.has(k)?"on":""}" data-c="${k}"><span class="dot" style="background:${v.c}"></span>${v.n}</button>`).join("");
   lc.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{if(b.dataset.c==="__must"){if(!mustOnly&&!must.size){toast("필수 방문지가 아직 없습니다. 장소를 열어 ★ 필수로 표시하세요");return;}setMustOnly(!mustOnly);}else toggleCat(b.dataset.c);mapChips();placeMarkers();renderList();});
   let items=PLACES.filter(p=>catOk(p)&&(!mustOnly||must.has(p.id)));const body=$("#listBody");let html="";
-  if(dayFilter==="all"&&must.size&&!mustOnly){const g=items.filter(p=>must.has(p.id));if(g.length)html+=`<div class="sec">★ 필수 방문지 · ${g.length}</div><div class="list">${g.map(p=>rowHtml(p)).join("")}</div>`;}
+  if(mustOnly&&must.size)html+=`<div class="acts" style="margin:4px 0 10px;grid-template-columns:1fr"><button id="shareMust">★ 필수 방문지 공유 (카톡으로 보내기)</button></div>`;
+  if(dayFilter==="all"&&must.size&&!mustOnly){const g=items.filter(p=>must.has(p.id));if(g.length)html+=`<div class="sec">★ 필수 방문지 · ${g.length}</div><div class="list">${g.map(p=>rowHtml(p)).join("")}</div><div class="acts" style="margin-top:8px;grid-template-columns:1fr"><button id="shareMust">★ 필수 방문지 공유 (카톡으로 보내기)</button></div>`;}
   if(dayFilter==="all"){const groups=[["확정 · 계획","확정"],["추천","추천"],["대안·옵션","대안·옵션"],["참고","참고"]];for(const[t,s]of groups){const g=items.filter(p=>p.st===s);if(!g.length)continue;html+=`<div class="sec">${t} · ${g.length}</div><div class="list">${g.map(p=>rowHtml(p)).join("")}</div>`;}}
   else{const dd=DAYS.find(x=>x.d===dayFilter);const flex=items.filter(p=>!p.days.length&&(p.cat==="eat"||p.cat==="cafe"));
     html+=`<div class="sec">10/${dd.d} (${dd.w}) · ${dd.t}</div>`;
@@ -806,7 +811,7 @@ function renderList(){const ds=$("#dayStrip");ds.innerHTML=`<button class="${day
       if(!legs&&!dayLegs[dayFilter]&&ROUTE_ON){if(routeBuilding!==dayFilter){routeBuilding=dayFilter;buildDayRoute(dayFilter).then(()=>{if(dayFilter===+dd.d){renderList();drawRoute();}});}}}
     else html+=`<div class="empty">이 날의 계획 장소가 없습니다.</div>`;
     if(flex.length&&(catSel.size===0||catSel.has("eat")||catSel.has("cafe")))html+=`<div class="sec">언제든 · 숙소 근처 먹거리</div><div class="list">${flex.map(p=>rowHtml(p)).join("")}</div>`;}
-  body.innerHTML=html||`<div class="empty">표시할 장소가 없습니다.</div>`;bindRows(body);const rb=$("#recalc");if(rb)rb.onclick=()=>{resetLegs();toast("경로를 다시 계산합니다");renderList();drawRoute();};}
+  body.innerHTML=html||`<div class="empty">표시할 장소가 없습니다.</div>`;bindRows(body);const sm=$("#shareMust");if(sm)sm.onclick=shareMust;const rb=$("#recalc");if(rb)rb.onclick=()=>{resetLegs();toast("경로를 다시 계산합니다");renderList();drawRoute();};}
 
 /* ---------- 추천자별 ---------- */
 let recSel=store.get("rec",SRCS[0][0]);
@@ -867,6 +872,7 @@ $("#goBtn").onclick=()=>{$("#cover").classList.add("off");store.set("seen",true)
 $("#homeBtn").onclick=()=>{$("#cover").classList.remove("off");};
 
 /* ---------- 시작 ---------- */
+(function importHash(){try{const m=location.hash.match(/must=([^&]*)/);if(!m)return;const ids=decodeURIComponent(m[1]).split(",").filter(id=>byId(id));let n=0;for(const id of ids)if(!must.has(id)){must.add(id);n++;}store.set("must",[...must]);history.replaceState(null,"",location.pathname+location.search);setTimeout(()=>toast(n?`필수 방문지 ${n}곳을 가져왔습니다 (총 ${must.size}곳)`:"이미 같은 필수 방문지입니다"),600);}catch(e){}})();
 drawBase();buildMarkers();mapChips();renderList();renderRec();renderNear();renderInfo();
 if(store.get("seen",false))$("#cover").classList.add("off");
 requestAnimationFrame(()=>{centerOn(35.700,139.772,30);drawRoute();setMode(mode);});
