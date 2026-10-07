@@ -618,14 +618,16 @@ async function routesCall(body,mask){const r=await fetch("https://routes.googlea
   let j=null;try{j=await r.json();}catch(e){}
   if(!r.ok){const msg=(j&&j.error&&j.error.message)||("HTTP "+r.status);throw new Error(msg);}
   if(!j||!j.routes||!j.routes[0])throw new Error("경로 없음");return j.routes[0];}
-async function computeLeg(a,b,dep){const mode=legMode(a,b);const key=`${a.id}>${b.id}:${mode}`;if(legCache[key])return legCache[key];const st=store.get("leg2_"+key,null);if(legValid(st)){legCache[key]=st;return st;}
+async function computeLeg(a,b,dep,arr){const mode=legMode(a,b);const key=`${a.id}>${b.id}:${mode}`;if(legCache[key])return legCache[key];const st=store.get("leg2_"+key,null);if(legValid(st)){legCache[key]=st;return st;}
   const straight={mode,poly:[[a.lat,a.lng],[b.lat,b.lng]],dist:Math.round(km(a,b)*1000),dur:null,err:true,steps:[]};
   if(!GKEY){straight.msg="API 키 없음";return straight;}
   const MASK="routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration,routes.legs.steps.travelMode,routes.legs.steps.polyline.encodedPolyline,routes.legs.steps.staticDuration,routes.legs.steps.transitDetails.transitLine.nameShort,routes.legs.steps.transitDetails.transitLine.name,routes.legs.steps.transitDetails.stopCount,routes.legs.steps.transitDetails.stopDetails.departureStop.name,routes.legs.steps.transitDetails.stopDetails.arrivalStop.name";
   const base={origin:{location:{latLng:{latitude:a.lat,longitude:a.lng}}},destination:{location:{latLng:{latitude:b.lat,longitude:b.lng}}},travelMode:mode,polylineEncoding:"ENCODED_POLYLINE",languageCode:"ko",units:"METRIC"};
   const tries=[];
-  if(mode==="TRANSIT"){const t1={...base,transitPreferences:{routingPreference:"FEWER_TRANSFERS",allowedTravelModes:["SUBWAY","RAIL","TRAIN","LIGHT_RAIL"]}};if(dep)t1.departureTime=dep;tries.push(t1);
-    const t2={...base};if(dep)t2.departureTime=dep;tries.push(t2);tries.push({...base});}
+  if(mode==="TRANSIT"){const when=dep||new Date(Date.now()+60000).toISOString().replace(/\.\d{3}Z$/,"Z");
+    tries.push({...base,departureTime:when,transitPreferences:{routingPreference:"FEWER_TRANSFERS",allowedTravelModes:["SUBWAY","RAIL","TRAIN","LIGHT_RAIL"]}});
+    if(arr)tries.push({...base,arrivalTime:arr,transitPreferences:{routingPreference:"FEWER_TRANSFERS"}});
+    tries.push({...base,departureTime:when});}
   else tries.push(base);
   let lastErr=null;
   for(const body of tries){try{const rt=await routesCall(body,MASK);
@@ -637,7 +639,7 @@ async function computeLeg(a,b,dep){const mode=legMode(a,b);const key=`${a.id}>${
   straight.msg=lastErr?lastErr.message:"알 수 없음";LEG_ERRS[key]=straight.msg;return straight;}
 const dayLegs={};let routeBuilding=null;
 function resetLegs(){for(const k of Object.keys(legCache))delete legCache[k];for(const k of Object.keys(dayLegs))delete dayLegs[k];for(const k of Object.keys(LEG_ERRS))delete LEG_ERRS[k];try{Object.keys(localStorage).filter(k=>k.startsWith("tk_leg")).forEach(k=>localStorage.removeItem(k));}catch(e){}routeBuilding=null;}
-async function buildDayRoute(d){if(dayLegs[d])return dayLegs[d];const ids=ROUTES[d]||[];const legs=[];const stops=ITIN[d]||[];for(let i=0;i<ids.length-1;i++){const a=byId(ids[i]),b=byId(ids[i+1]);if(!a||!b)continue;const sa=stops.find(x=>x.id===ids[i]);legs.push(computeLeg(a,b,depISO(d,sa&&sa.t)).then(r=>({a:a.id,b:b.id,...r})));}
+async function buildDayRoute(d){if(dayLegs[d])return dayLegs[d];const ids=ROUTES[d]||[];const legs=[];const stops=ITIN[d]||[];for(let i=0;i<ids.length-1;i++){const a=byId(ids[i]),b=byId(ids[i+1]);if(!a||!b)continue;const sa=stops.find(x=>x.id===ids[i]);const sb=stops.find(x=>x.id===ids[i+1]);legs.push(computeLeg(a,b,depISO(d,sa&&sa.t),depISO(d,sb&&sb.t)).then(r=>({a:a.id,b:b.id,...r})));}
   const out=await Promise.all(legs);dayLegs[d]=out;return out;}
 function legFor(d,aId,bId){const L=dayLegs[d];if(!L)return null;return L.find(x=>x.a===aId&&x.b===bId)||null;}
 const minusMin=(t,m)=>{if(!t)return"";const[h,mi]=t.split(":").map(Number);let x=h*60+mi-m;if(x<0)return"";return String(Math.floor(x/60)).padStart(2,"0")+":"+String(x%60).padStart(2,"0");};
