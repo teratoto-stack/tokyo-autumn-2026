@@ -611,21 +611,36 @@ function routePts(){if(!ROUTE_ON||dayFilter==="all")return[];return(ROUTES[dayFi
 function decodePoly(str){let idx=0,lat=0,lng=0,out=[];while(idx<str.length){let b,sh=0,r=0;do{b=str.charCodeAt(idx++)-63;r|=(b&31)<<sh;sh+=5;}while(b>=32);lat+=(r&1)?~(r>>1):(r>>1);sh=0;r=0;do{b=str.charCodeAt(idx++)-63;r|=(b&31)<<sh;sh+=5;}while(b>=32);lng+=(r&1)?~(r>>1):(r>>1);out.push([lat/1e5,lng/1e5]);}return out;}
 const legCache={};
 function legMode(a,b){return km(a,b)<2.2?"WALK":"TRANSIT";}
-async function computeLeg(a,b){const mode=legMode(a,b);const key=`${a.id}>${b.id}:${mode}`;if(legCache[key])return legCache[key];const st=store.get("leg_"+key,null);if(st){legCache[key]=st;return st;}
-  const straight={mode,poly:[[a.lat,a.lng],[b.lat,b.lng]],dist:Math.round(km(a,b)*1000),dur:null,err:true};
-  if(!GKEY)return straight;
-  try{const body={origin:{location:{latLng:{latitude:a.lat,longitude:a.lng}}},destination:{location:{latLng:{latitude:b.lat,longitude:b.lng}}},travelMode:mode,polylineEncoding:"ENCODED_POLYLINE",languageCode:"ko",units:"METRIC"};
-    if(mode==="TRANSIT"){body.transitPreferences={routingPreference:"FEWER_TRANSFERS"};}
-    const r=await fetch("https://routes.googleapis.com/directions/v2:computeRoutes",{method:"POST",headers:{"Content-Type":"application/json","X-Goog-Api-Key":GKEY,"X-Goog-FieldMask":"routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration,routes.legs.steps.travelMode,routes.legs.steps.polyline.encodedPolyline,routes.legs.steps.transitDetails.transitLine.nameShort,routes.legs.steps.transitDetails.transitLine.name,routes.legs.steps.transitDetails.stopCount"},body:JSON.stringify(body)});
-    if(!r.ok)throw new Error("HTTP "+r.status);const j=await r.json();const rt=j.routes&&j.routes[0];if(!rt)throw new Error("no route");
-    const steps=[];if(rt.legs)for(const lg of rt.legs)for(const sp of(lg.steps||[])){steps.push({m:sp.travelMode,poly:sp.polyline?decodePoly(sp.polyline.encodedPolyline):[],line:sp.transitDetails?(sp.transitDetails.transitLine.nameShort||sp.transitDetails.transitLine.name||""):"",stops:sp.transitDetails?sp.transitDetails.stopCount:0});}
-    const res={mode,poly:decodePoly(rt.polyline.encodedPolyline),dist:rt.distanceMeters||0,dur:rt.duration?parseInt(rt.duration):null,steps};
-    legCache[key]=res;store.set("leg_"+key,res);return res;}
-  catch(e){console.warn("route",key,e);return straight;}}
+const LEG_ERRS={};
+function depISO(d,t){if(!d||!t)return null;const[h,m]=t.split(":").map(Number);const dt=new Date(Date.UTC(2026,9,d,h-9,m,0));return dt.toISOString().replace(/\.\d{3}Z$/,"Z");}
+function legValid(x){return x&&Array.isArray(x.poly)&&x.poly.length>2&&Array.isArray(x.steps)&&x.dur!=null;}
+async function routesCall(body,mask){const r=await fetch("https://routes.googleapis.com/directions/v2:computeRoutes",{method:"POST",headers:{"Content-Type":"application/json","X-Goog-Api-Key":GKEY,"X-Goog-FieldMask":mask},body:JSON.stringify(body)});
+  let j=null;try{j=await r.json();}catch(e){}
+  if(!r.ok){const msg=(j&&j.error&&j.error.message)||("HTTP "+r.status);throw new Error(msg);}
+  if(!j||!j.routes||!j.routes[0])throw new Error("경로 없음");return j.routes[0];}
+async function computeLeg(a,b,dep){const mode=legMode(a,b);const key=`${a.id}>${b.id}:${mode}`;if(legCache[key])return legCache[key];const st=store.get("leg2_"+key,null);if(legValid(st)){legCache[key]=st;return st;}
+  const straight={mode,poly:[[a.lat,a.lng],[b.lat,b.lng]],dist:Math.round(km(a,b)*1000),dur:null,err:true,steps:[]};
+  if(!GKEY){straight.msg="API 키 없음";return straight;}
+  const MASK="routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration,routes.legs.steps.travelMode,routes.legs.steps.polyline.encodedPolyline,routes.legs.steps.staticDuration,routes.legs.steps.transitDetails.transitLine.nameShort,routes.legs.steps.transitDetails.transitLine.name,routes.legs.steps.transitDetails.stopCount,routes.legs.steps.transitDetails.stopDetails.departureStop.name,routes.legs.steps.transitDetails.stopDetails.arrivalStop.name";
+  const base={origin:{location:{latLng:{latitude:a.lat,longitude:a.lng}}},destination:{location:{latLng:{latitude:b.lat,longitude:b.lng}}},travelMode:mode,polylineEncoding:"ENCODED_POLYLINE",languageCode:"ko",units:"METRIC"};
+  const tries=[];
+  if(mode==="TRANSIT"){const t1={...base,transitPreferences:{routingPreference:"FEWER_TRANSFERS",allowedTravelModes:["SUBWAY","RAIL","TRAIN","LIGHT_RAIL"]}};if(dep)t1.departureTime=dep;tries.push(t1);
+    const t2={...base};if(dep)t2.departureTime=dep;tries.push(t2);tries.push({...base});}
+  else tries.push(base);
+  let lastErr=null;
+  for(const body of tries){try{const rt=await routesCall(body,MASK);
+      const steps=[];if(rt.legs)for(const lg of rt.legs)for(const sp of(lg.steps||[])){const td=sp.transitDetails;steps.push({m:sp.travelMode,poly:sp.polyline?decodePoly(sp.polyline.encodedPolyline):[],dur:sp.staticDuration?parseInt(sp.staticDuration):null,line:td?(td.transitLine.nameShort||td.transitLine.name||""):"",stops:td?td.stopCount:0,from:td&&td.stopDetails&&td.stopDetails.departureStop?td.stopDetails.departureStop.name:"",to:td&&td.stopDetails&&td.stopDetails.arrivalStop?td.stopDetails.arrivalStop.name:""});}
+      const res={mode,poly:decodePoly(rt.polyline.encodedPolyline),dist:rt.distanceMeters||0,dur:rt.duration?parseInt(rt.duration):null,steps,dep:dep||null};
+      if(!legValid(res))throw new Error("응답 불완전");
+      legCache[key]=res;store.set("leg2_"+key,res);delete LEG_ERRS[key];return res;}
+    catch(e){lastErr=e;console.warn("route",key,e.message);}}
+  straight.msg=lastErr?lastErr.message:"알 수 없음";LEG_ERRS[key]=straight.msg;return straight;}
 const dayLegs={};let routeBuilding=null;
-async function buildDayRoute(d){if(dayLegs[d])return dayLegs[d];const ids=ROUTES[d]||[];const legs=[];for(let i=0;i<ids.length-1;i++){const a=byId(ids[i]),b=byId(ids[i+1]);if(!a||!b)continue;legs.push(computeLeg(a,b).then(r=>({a:a.id,b:b.id,...r})));}
+function resetLegs(){for(const k of Object.keys(legCache))delete legCache[k];for(const k of Object.keys(dayLegs))delete dayLegs[k];for(const k of Object.keys(LEG_ERRS))delete LEG_ERRS[k];try{Object.keys(localStorage).filter(k=>k.startsWith("tk_leg")).forEach(k=>localStorage.removeItem(k));}catch(e){}routeBuilding=null;}
+async function buildDayRoute(d){if(dayLegs[d])return dayLegs[d];const ids=ROUTES[d]||[];const legs=[];const stops=ITIN[d]||[];for(let i=0;i<ids.length-1;i++){const a=byId(ids[i]),b=byId(ids[i+1]);if(!a||!b)continue;const sa=stops.find(x=>x.id===ids[i]);legs.push(computeLeg(a,b,depISO(d,sa&&sa.t)).then(r=>({a:a.id,b:b.id,...r})));}
   const out=await Promise.all(legs);dayLegs[d]=out;return out;}
 function legFor(d,aId,bId){const L=dayLegs[d];if(!L)return null;return L.find(x=>x.a===aId&&x.b===bId)||null;}
+const minusMin=(t,m)=>{if(!t)return"";const[h,mi]=t.split(":").map(Number);let x=h*60+mi-m;if(x<0)return"";return String(Math.floor(x/60)).padStart(2,"0")+":"+String(x%60).padStart(2,"0");};
 const fmtDur=sec=>sec==null?"":(sec<3600?Math.round(sec/60)+"분":Math.floor(sec/3600)+"시간 "+Math.round((sec%3600)/60)+"분");
 let gRoutes=[],lRoutes=[];
 function clearRouteLayers(){for(const g of gRoutes)g.setMap(null);gRoutes=[];if(lmap)for(const l of lRoutes)lmap.removeLayer(l);lRoutes=[];const rp=$("#routePath");if(rp)rp.setAttribute("d","");const rw=$("#routeWalk");if(rw)rw.setAttribute("d","");}
@@ -762,13 +777,16 @@ function renderList(){const ds=$("#dayStrip");ds.innerHTML=`<button class="${day
     const stops=ITIN[dayFilter]||[];if(stops.length){html+=`<div class="tl">`;const legs=dayLegs[dayFilter];let tot=0,wk=0;
       stops.forEach((st,i)=>{const p=byId(st.id);if(!p)return;const alt=st.alt?byId(st.alt):null;
         html+=`<button class="tls ${st.opt?"opt":""}" data-id="${p.id}" style="--c:${CATS[p.cat].c}"><span class="tt num">${st.t}</span><span class="tdot"></span><span class="tb"><b>${esc(p.ko.replace(/^러닝: /,""))}</b>${st.opt?' <span class="st">옵션</span>':""}<small>${esc(st.l||"")}${alt?` · 대안: ${esc(alt.ko.replace(/\s*\(.*\)$/,""))}`:""}</small></span></button>`;
-        const nx=stops[i+1];if(nx&&nx.id!==st.id){const lg=legFor(dayFilter,st.id,nx.id);let txt="";if(lg){const line=(lg.steps||[]).filter(x=>x.m==="TRANSIT").map(x=>x.line).filter(Boolean).join(" → ");txt=(lg.mode==="WALK"?"도보":"전철"+(line?" "+line:""))+(lg.dur!=null?" "+fmtDur(lg.dur):"")+(lg.dist?" · "+fmtKm(lg.dist/1000):"")+(lg.err?" (직선 추정)":"");if(lg.dur){tot+=lg.dur;if(lg.mode==="WALK")wk+=lg.dur;}}else txt=legs?"":"경로 계산 중…";
+        const nx=stops[i+1];if(nx&&nx.id!==st.id){const lg=legFor(dayFilter,st.id,nx.id);let txt="";if(lg){const line=(lg.steps||[]).filter(x=>x.m==="TRANSIT").map(x=>x.line).filter(Boolean).join(" → ");const trs=(lg.steps||[]).filter(x=>x.m==="TRANSIT");const seg=trs.map(x=>(x.line||"전철")+(x.from&&x.to?` ${x.from}→${x.to}`:"")+(x.stops?` ${x.stops}정거장`:"")).join(" · ");
+            if(lg.err){txt=(lg.mode==="WALK"?"도보":"전철")+" · 직선 "+fmtKm(lg.dist/1000)+" (구글 경로 조회 실패"+(lg.msg?": "+lg.msg:"")+")";}
+            else{txt=(lg.mode==="WALK"?"도보 ":"")+(seg||"")+" "+fmtDur(lg.dur)+" · "+fmtKm(lg.dist/1000);const dp=minusMin(nx.t,Math.ceil(lg.dur/60));if(dp)txt+=` · ${nx.t} 도착하려면 ${dp} 출발`;}
+            if(lg.dur){tot+=lg.dur;if(lg.mode==="WALK")wk+=lg.dur;}}else txt=legs?"":"경로 계산 중…";
           html+=`<div class="tleg ${lg&&lg.mode==="WALK"?"walk":""}">${esc(txt)}</div>`;}});
-      html+=`</div>`;if(legs&&tot)html+=`<p class="hint">이동 합계 약 ${fmtDur(tot)} (도보 ${fmtDur(wk)}). 전철 시간은 환승·대기 포함 추정치입니다.</p>`;
+      html+=`</div>`;if(legs){const bad=legs.filter(l=>l.err);html+=`<p class="hint">이동 합계 약 ${fmtDur(tot)} (도보 ${fmtDur(wk)}). 구글 경로 ${legs.length-bad.length}/${legs.length} 조회 완료${bad.length?` · 실패 ${bad.length}건: ${esc([...new Set(bad.map(l=>l.msg||"?"))].join(" / "))}`:""}. 전철은 계획 시각 기준 실제 시간표 반영.</p><div class="acts" style="margin-top:8px;grid-template-columns:1fr"><button id="recalc">동선 다시 계산 (캐시 삭제)</button></div>`;}
       if(!legs&&!dayLegs[dayFilter]&&ROUTE_ON){if(routeBuilding!==dayFilter){routeBuilding=dayFilter;buildDayRoute(dayFilter).then(()=>{if(dayFilter===+dd.d){renderList();drawRoute();}});}}}
     else html+=`<div class="empty">이 날의 계획 장소가 없습니다.</div>`;
     if(flex.length&&(catSel.size===0||catSel.has("eat")||catSel.has("cafe")))html+=`<div class="sec">언제든 · 숙소 근처 먹거리</div><div class="list">${flex.map(p=>rowHtml(p)).join("")}</div>`;}
-  body.innerHTML=html||`<div class="empty">표시할 장소가 없습니다.</div>`;bindRows(body);}
+  body.innerHTML=html||`<div class="empty">표시할 장소가 없습니다.</div>`;bindRows(body);const rb=$("#recalc");if(rb)rb.onclick=()=>{resetLegs();toast("경로를 다시 계산합니다");renderList();drawRoute();};}
 
 /* ---------- 추천자별 ---------- */
 let recSel=store.get("rec",SRCS[0][0]);
