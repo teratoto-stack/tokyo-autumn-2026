@@ -621,7 +621,7 @@ async function routesCall(body,mask){const r=await fetch("https://routes.googlea
 async function computeLeg(a,b,dep,arr){const mode=legMode(a,b);const key=`${a.id}>${b.id}:${mode}`;if(legCache[key])return legCache[key];const st=store.get("leg2_"+key,null);if(legValid(st)){legCache[key]=st;return st;}
   const straight={mode,poly:[[a.lat,a.lng],[b.lat,b.lng]],dist:Math.round(km(a,b)*1000),dur:null,err:true,steps:[]};
   if(!GKEY){straight.msg="API 키 없음";return straight;}
-  const MASK="routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration,routes.legs.steps.travelMode,routes.legs.steps.polyline.encodedPolyline,routes.legs.steps.staticDuration,routes.legs.steps.transitDetails.transitLine.nameShort,routes.legs.steps.transitDetails.transitLine.name,routes.legs.steps.transitDetails.stopCount,routes.legs.steps.transitDetails.stopDetails.departureStop.name,routes.legs.steps.transitDetails.stopDetails.arrivalStop.name";
+  const MASK="routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration,routes.legs.steps.travelMode,routes.legs.steps.polyline.encodedPolyline,routes.legs.steps.staticDuration,routes.legs.steps.transitDetails.transitLine.nameShort,routes.legs.steps.transitDetails.transitLine.name,routes.legs.steps.transitDetails.transitLine.color,routes.legs.steps.transitDetails.transitLine.vehicle.type,routes.legs.steps.transitDetails.stopCount,routes.legs.steps.transitDetails.stopDetails.departureStop.name,routes.legs.steps.transitDetails.stopDetails.arrivalStop.name";
   const base={origin:{location:{latLng:{latitude:a.lat,longitude:a.lng}}},destination:{location:{latLng:{latitude:b.lat,longitude:b.lng}}},travelMode:mode,polylineEncoding:"ENCODED_POLYLINE",languageCode:"ko",units:"METRIC"};
   const tries=[];
   if(mode==="TRANSIT"){const when=dep||new Date(Date.now()+60000).toISOString().replace(/\.\d{3}Z$/,"Z");
@@ -631,7 +631,7 @@ async function computeLeg(a,b,dep,arr){const mode=legMode(a,b);const key=`${a.id
   else tries.push(base);
   let lastErr=null;
   for(const body of tries){try{const rt=await routesCall(body,MASK);
-      const steps=[];if(rt.legs)for(const lg of rt.legs)for(const sp of(lg.steps||[])){const td=sp.transitDetails;steps.push({m:sp.travelMode,poly:sp.polyline?decodePoly(sp.polyline.encodedPolyline):[],dur:sp.staticDuration?parseInt(sp.staticDuration):null,line:td?(td.transitLine.nameShort||td.transitLine.name||""):"",stops:td?td.stopCount:0,from:td&&td.stopDetails&&td.stopDetails.departureStop?td.stopDetails.departureStop.name:"",to:td&&td.stopDetails&&td.stopDetails.arrivalStop?td.stopDetails.arrivalStop.name:""});}
+      const steps=[];if(rt.legs)for(const lg of rt.legs)for(const sp of(lg.steps||[])){const td=sp.transitDetails;steps.push({m:sp.travelMode,poly:sp.polyline?decodePoly(sp.polyline.encodedPolyline):[],dur:sp.staticDuration?parseInt(sp.staticDuration):null,line:td?(td.transitLine.nameShort||td.transitLine.name||""):"",color:td&&td.transitLine.color?td.transitLine.color:"",veh:td&&td.transitLine.vehicle?td.transitLine.vehicle.type:"",stops:td?td.stopCount:0,from:td&&td.stopDetails&&td.stopDetails.departureStop?td.stopDetails.departureStop.name:"",to:td&&td.stopDetails&&td.stopDetails.arrivalStop?td.stopDetails.arrivalStop.name:""});}
       const res={mode,poly:decodePoly(rt.polyline.encodedPolyline),dist:rt.distanceMeters||0,dur:rt.duration?parseInt(rt.duration):null,steps,dep:dep||null};
       if(!legValid(res))throw new Error("응답 불완전");
       legCache[key]=res;store.set("leg2_"+key,res);delete LEG_ERRS[key];return res;}
@@ -645,17 +645,22 @@ function legFor(d,aId,bId){const L=dayLegs[d];if(!L)return null;return L.find(x=
 const minusMin=(t,m)=>{if(!t)return"";const[h,mi]=t.split(":").map(Number);let x=h*60+mi-m;if(x<0)return"";return String(Math.floor(x/60)).padStart(2,"0")+":"+String(x%60).padStart(2,"0");};
 const fmtDur=sec=>sec==null?"":(sec<3600?Math.round(sec/60)+"분":Math.floor(sec/3600)+"시간 "+Math.round((sec%3600)/60)+"분");
 let gRoutes=[],lRoutes=[];
-function clearRouteLayers(){for(const g of gRoutes)g.setMap(null);gRoutes=[];if(lmap)for(const l of lRoutes)lmap.removeLayer(l);lRoutes=[];const rp=$("#routePath");if(rp)rp.setAttribute("d","");const rw=$("#routeWalk");if(rw)rw.setAttribute("d","");}
+function clearRouteLayers(){for(const g of gRoutes)g.setMap(null);gRoutes=[];if(lmap)for(const l of lRoutes)lmap.removeLayer(l);lRoutes=[];const rp=$("#routePath");if(rp)rp.setAttribute("d","");const rw=$("#routeWalk");if(rw)rw.setAttribute("d","");const rg=$("#routeG");if(rg)rg.innerHTML="";}
 function drawRoute(){clearRouteLayers();if(!ROUTE_ON||dayFilter==="all")return;const d=dayFilter;
   const legs=dayLegs[d];
   if(!legs){const pts=routePts();drawSegs(pts.length?[{poly:pts,mode:"TRANSIT"}]:[]);if(routeBuilding!==d){routeBuilding=d;buildDayRoute(d).then(()=>{if(dayFilter===d){drawRoute();if($("#v-list").classList.contains("on"))renderList();}});}return;}
-  const segs=[];for(const lg of legs){if(lg.steps&&lg.steps.length){for(const sp of lg.steps)if(sp.poly.length>1)segs.push({poly:sp.poly,mode:sp.m==="WALK"?"WALK":"TRANSIT"});}else segs.push({poly:lg.poly,mode:lg.mode});}
+  const segs=[];for(const lg of legs){if(lg.steps&&lg.steps.length){for(const sp of lg.steps)if(sp.poly.length>1)segs.push({poly:sp.poly,mode:sp.m==="WALK"?"WALK":"TRANSIT",color:sp.color||"",est:false});}else segs.push({poly:lg.poly,mode:lg.mode,color:"",est:!!lg.err});}
   drawSegs(segs);}
 function drawSegs(segs){const css=getComputedStyle(document.documentElement);const walkC=css.getPropertyValue("--accent").trim()||"#c4643a";const trC=css.getPropertyValue("--route").trim()||"#1f2937";
-  let dW="",dT="";for(const sg of segs){const p=toPath(sg.poly);if(sg.mode==="WALK")dW+=p+" ";else dT+=p+" ";}
-  const rp=$("#routePath");if(rp)rp.setAttribute("d",dT);const rw=$("#routeWalk");if(rw)rw.setAttribute("d",dW);
-  if(gmap){for(const sg of segs){const path=sg.poly.map(([lat,lng])=>({lat,lng}));if(sg.mode==="WALK")gRoutes.push(new google.maps.Polyline({path,strokeColor:walkC,strokeOpacity:.95,strokeWeight:5,map:gmap,zIndex:5}));else gRoutes.push(new google.maps.Polyline({path,strokeOpacity:0,icons:[{icon:{path:"M 0,-1 0,1",strokeOpacity:.8,strokeColor:trC,strokeWeight:3,scale:3},offset:"0",repeat:"14px"}],map:gmap,zIndex:4}));}}
-  if(lmap){for(const sg of segs){lRoutes.push(L.polyline(sg.poly,sg.mode==="WALK"?{color:walkC,weight:5,opacity:.95}:{color:trC,weight:3,dashArray:"7 5",opacity:.8}).addTo(lmap));}}}
+  let dW="",dT="",extra="";for(const sg of segs){const p=toPath(sg.poly);if(sg.mode==="WALK")dW+=p+" ";else if(sg.color&&!sg.est)extra+=`<path d="${p}" fill="none" stroke="#fff" stroke-width="7" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/><path d="${p}" fill="none" stroke="${sg.color}" stroke-width="4.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>`;else dT+=p+" ";}
+  const rp=$("#routePath");if(rp)rp.setAttribute("d",dT);const rw=$("#routeWalk");if(rw)rw.setAttribute("d",dW);const rg=$("#routeG");if(rg)rg.innerHTML=extra;
+  if(gmap){for(const sg of segs){const path=sg.poly.map(([lat,lng])=>({lat,lng}));
+      if(sg.mode==="WALK")gRoutes.push(new google.maps.Polyline({path,strokeColor:walkC,strokeOpacity:.95,strokeWeight:5,map:gmap,zIndex:5}));
+      else if(sg.color&&!sg.est){gRoutes.push(new google.maps.Polyline({path,strokeColor:"#ffffff",strokeOpacity:.9,strokeWeight:9,map:gmap,zIndex:3}));gRoutes.push(new google.maps.Polyline({path,strokeColor:sg.color,strokeOpacity:1,strokeWeight:6,map:gmap,zIndex:4}));}
+      else gRoutes.push(new google.maps.Polyline({path,strokeOpacity:0,icons:[{icon:{path:"M 0,-1 0,1",strokeOpacity:.8,strokeColor:trC,strokeWeight:3,scale:3},offset:"0",repeat:"14px"}],map:gmap,zIndex:4}));}}
+  if(lmap){for(const sg of segs){if(sg.mode==="WALK")lRoutes.push(L.polyline(sg.poly,{color:walkC,weight:5,opacity:.95}).addTo(lmap));
+      else if(sg.color&&!sg.est){lRoutes.push(L.polyline(sg.poly,{color:"#fff",weight:9,opacity:.9}).addTo(lmap));lRoutes.push(L.polyline(sg.poly,{color:sg.color,weight:6,opacity:1}).addTo(lmap));}
+      else lRoutes.push(L.polyline(sg.poly,{color:trC,weight:3,dashArray:"7 5",opacity:.8}).addTo(lmap));}}}
 function setMode(m,announce){
   if(m<0||m>=MODES.length)m=Math.max(0,VEC_IDX);const M=MODES[m];const cv=curView();
   const finish=()=>{mode=m;store.set("mode",m);$("#ztile").textContent=M.n;$("#ztile").hidden=MODES.length<2;if(announce)toast("지도: "+M.n);};
@@ -679,6 +684,7 @@ function drawBase(){
   for(const l of LINES)s.push(`<path d="${P(l.p,l.close)}" fill="none" stroke="var(--card)" stroke-width="${l.w+2.5}" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>`);
   for(const l of LINES)s.push(`<path d="${P(l.p,l.close)}" fill="none" stroke="${l.c}" stroke-width="${l.w}" ${l.dash?`stroke-dasharray="${l.dash}"`:""} vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>`);
   s.push(`<path id="routePath" d="" fill="none" stroke="var(--route)" stroke-width="3" stroke-dasharray="7 5" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity=".8"/>`);
+  s.push(`<g id="routeG"></g>`);
   s.push(`<path id="routeWalk" d="" fill="none" stroke="var(--accent)" stroke-width="5" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity=".95"/>`);
   for(const[n,la,lo]of AREAS_LBL){const[x,y]=px(la,lo);s.push(`<text class="svgtxt area" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle">${n}</text>`);}
   for(const[n,la,lo]of LANDMARKS){const[x,y]=px(la,lo);s.push(`<path class="lm" d="M${x.toFixed(1)} ${(y-1).toFixed(1)} l.8 1.4 h-1.6 z" fill="var(--fg)" opacity=".7" vector-effect="non-scaling-stroke"/><text class="svgtxt minor lmt" x="${(x+1).toFixed(1)}" y="${(y+.5).toFixed(1)}">${n}</text>`);}
