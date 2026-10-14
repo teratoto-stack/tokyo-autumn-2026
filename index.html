@@ -79,6 +79,9 @@ nav.tabs button.on{color:var(--accent)}
 .mk .lb{font-size:11px;font-weight:500;line-height:1.15;background:var(--card);color:var(--fg);padding:2px 6px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.18);white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;display:none}
 .mk.lbl .lb{display:block}
 .mk.done .pin{opacity:.45}
+.stlb{text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;background:transparent;border:0;box-shadow:none;font-weight:700}
+.leaflet-tooltip.stlb{padding:1px 4px;background:rgba(255,255,255,.85);border:0;box-shadow:none}
+.leaflet-tooltip.stlb:before{display:none}
 .mk.must .pin{box-shadow:0 0 0 3px #f5b400,0 2px 6px rgba(0,0,0,.45);width:20px;height:20px}
 .mk.must .lb{font-weight:700;border:1.5px solid #f5b400}
 .chip.must.on{background:#f5b400;color:#1f1a14;border-color:#f5b400}
@@ -638,6 +641,18 @@ async function routesCall(body,mask){const r=await fetch("https://routes.googlea
   let j=null;try{j=await r.json();}catch(e){}
   if(!r.ok){const msg=(j&&j.error&&j.error.message)||("HTTP "+r.status);throw new Error(msg);}
   if(!j||!j.routes||!j.routes[0])throw new Error("경로 없음");return j.routes[0];}
+function ensureGoogleLib(){return new Promise(res=>{if(!GKEY)return res(false);loadGoogle(ok=>res(!!ok));});}
+let gDirSvc=null;
+async function legViaDirections(a,b,mode,dep,arr){const ok=await ensureGoogleLib();if(!ok||!google.maps.DirectionsService)throw new Error("Maps JS 미로딩");
+  if(!gDirSvc)gDirSvc=new google.maps.DirectionsService();
+  const req={origin:{lat:a.lat,lng:a.lng},destination:{lat:b.lat,lng:b.lng},travelMode:mode==="WALK"?google.maps.TravelMode.WALKING:google.maps.TravelMode.TRANSIT,language:"ko",region:"JP"};
+  if(mode==="TRANSIT"){const to={routingPreference:google.maps.TransitRoutePreference.FEWER_TRANSFERS,modes:[google.maps.TransitMode.SUBWAY,google.maps.TransitMode.RAIL,google.maps.TransitMode.TRAIN]};
+    if(arr)to.arrivalTime=new Date(arr);else if(dep)to.departureTime=new Date(dep);req.transitOptions=to;}
+  const r=await gDirSvc.route(req);const rt=r&&r.routes&&r.routes[0];const lg=rt&&rt.legs&&rt.legs[0];if(!lg)throw new Error("Directions 경로 없음");
+  const steps=(lg.steps||[]).map(sp=>{const t=sp.transit;return{m:sp.travel_mode==="TRANSIT"?"TRANSIT":"WALK",poly:(sp.path||[]).map(q=>[q.lat(),q.lng()]),dur:sp.duration?sp.duration.value:null,
+    line:t?(t.line.short_name||t.line.name||""):"",color:t&&t.line.color?t.line.color:"",veh:t&&t.line.vehicle?t.line.vehicle.type:"",stops:t?t.num_stops:0,from:t?t.departure_stop.name:"",to:t?t.arrival_stop.name:"",head:t?(t.headsign||""):"",
+    depT:t&&t.departure_time?t.departure_time.text:"",arrT:t&&t.arrival_time?t.arrival_time.text:""};});
+  return{mode,poly:(rt.overview_path||[]).map(q=>[q.lat(),q.lng()]),dist:lg.distance?lg.distance.value:0,dur:lg.duration?lg.duration.value:null,steps,dep:dep||null,via:"directions"};}
 async function computeLeg(a,b,dep,arr){const mode=legMode(a,b);const key=`${a.id}>${b.id}:${mode}`;if(legCache[key])return legCache[key];const st=store.get("leg2_"+key,null);if(legValid(st)){legCache[key]=st;return st;}
   const straight={mode,poly:[[a.lat,a.lng],[b.lat,b.lng]],dist:Math.round(km(a,b)*1000),dur:null,err:true,steps:[]};
   if(!GKEY){straight.msg="API 키 없음";return straight;}
@@ -650,6 +665,8 @@ async function computeLeg(a,b,dep,arr){const mode=legMode(a,b);const key=`${a.id
     tries.push({...base,departureTime:when});}
   else tries.push(base);
   let lastErr=null;
+  try{const res=await legViaDirections(a,b,mode,dep,arr);if(legValid(res)){legCache[key]=res;store.set("leg2_"+key,res);delete LEG_ERRS[key];return res;}throw new Error("Directions 응답 불완전");}
+  catch(e){lastErr=e;console.warn("directions",key,e&&e.message?e.message:e);}
   for(const body of tries){try{const rt=await routesCall(body,MASK);
       const steps=[];if(rt.legs)for(const lg of rt.legs)for(const sp of(lg.steps||[])){const td=sp.transitDetails;steps.push({m:sp.travelMode,poly:sp.polyline?decodePoly(sp.polyline.encodedPolyline):[],dur:sp.staticDuration?parseInt(sp.staticDuration):null,line:td?(td.transitLine.nameShort||td.transitLine.name||""):"",color:td&&td.transitLine.color?td.transitLine.color:"",veh:td&&td.transitLine.vehicle?td.transitLine.vehicle.type:"",stops:td?td.stopCount:0,from:td&&td.stopDetails&&td.stopDetails.departureStop?td.stopDetails.departureStop.name:"",to:td&&td.stopDetails&&td.stopDetails.arrivalStop?td.stopDetails.arrivalStop.name:""});}
       const res={mode,poly:decodePoly(rt.polyline.encodedPolyline),dist:rt.distanceMeters||0,dur:rt.duration?parseInt(rt.duration):null,steps,dep:dep||null};
@@ -669,11 +686,15 @@ function clearRouteLayers(){for(const g of gRoutes)g.setMap(null);gRoutes=[];if(
 function drawRoute(){clearRouteLayers();if(!ROUTE_ON||dayFilter==="all")return;const d=dayFilter;
   const legs=dayLegs[d];
   if(!legs){const pts=routePts();drawSegs(pts.length?[{poly:pts,mode:"TRANSIT"}]:[]);if(routeBuilding!==d){routeBuilding=d;buildDayRoute(d).then(()=>{if(dayFilter===d){drawRoute();if($("#v-list").classList.contains("on"))renderList();}});}return;}
-  const segs=[];for(const lg of legs){if(lg.steps&&lg.steps.length){for(const sp of lg.steps)if(sp.poly.length>1)segs.push({poly:sp.poly,mode:sp.m==="WALK"?"WALK":"TRANSIT",color:sp.color||"",est:false});}else segs.push({poly:lg.poly,mode:lg.mode,color:"",est:!!lg.err});}
+  const segs=[];for(const lg of legs){if(lg.steps&&lg.steps.length){for(const sp of lg.steps)if(sp.poly.length>1)segs.push({poly:sp.poly,mode:sp.m==="WALK"?"WALK":"TRANSIT",color:sp.color||"",est:false,from:sp.from||"",to:sp.to||"",line:sp.line||""});}else segs.push({poly:lg.poly,mode:lg.mode,color:"",est:!!lg.err});}
   drawSegs(segs);}
 function drawSegs(segs){const css=getComputedStyle(document.documentElement);const walkC=css.getPropertyValue("--accent").trim()||"#c4643a";const trC=css.getPropertyValue("--route").trim()||"#1f2937";
   let dW="",dT="",extra="";for(const sg of segs){const p=toPath(sg.poly);if(sg.mode==="WALK")dW+=p+" ";else if(sg.color&&!sg.est)extra+=`<path d="${p}" fill="none" stroke="#fff" stroke-width="7" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/><path d="${p}" fill="none" stroke="${sg.color}" stroke-width="4.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>`;else dT+=p+" ";}
+  const stns=[];for(const sg of segs){if(sg.mode!=="TRANSIT"||sg.est||sg.poly.length<2)continue;const c=sg.color||trC;if(sg.from)stns.push({p:sg.poly[0],n:sg.from,c,k:"승차"});if(sg.to)stns.push({p:sg.poly[sg.poly.length-1],n:sg.to,c,k:"하차"});}
+  for(const st of stns){const[x,y]=px(st.p[0],st.p[1]);extra+=`<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="1.1" fill="#fff" stroke="${st.c}" stroke-width="3" vector-effect="non-scaling-stroke"/><text class="svgtxt st" x="${(x+1.4).toFixed(2)}" y="${(y-1).toFixed(2)}" style="font-weight:700;fill:${st.c}">${esc(st.n)} ${st.k}</text>`;}
   const rp=$("#routePath");if(rp)rp.setAttribute("d",dT);const rw=$("#routeWalk");if(rw)rw.setAttribute("d",dW);const rg=$("#routeG");if(rg)rg.innerHTML=extra;
+  if(gmap){for(const st of stns){gRoutes.push(new google.maps.Marker({position:{lat:st.p[0],lng:st.p[1]},map:gmap,zIndex:6,icon:{path:google.maps.SymbolPath.CIRCLE,scale:6,fillColor:"#fff",fillOpacity:1,strokeColor:st.c,strokeWeight:3},label:{text:`${st.n} ${st.k}`,color:st.c,fontSize:"11px",fontWeight:"700",className:"stlb"}}));}}
+  if(lmap){for(const st of stns){lRoutes.push(L.circleMarker(st.p,{radius:6,color:st.c,weight:3,fillColor:"#fff",fillOpacity:1}).bindTooltip(`${st.n} ${st.k}`,{permanent:true,direction:"right",offset:[8,0],className:"stlb"}).addTo(lmap));}}
   if(gmap){for(const sg of segs){const path=sg.poly.map(([lat,lng])=>({lat,lng}));
       if(sg.mode==="WALK")gRoutes.push(new google.maps.Polyline({path,strokeColor:walkC,strokeOpacity:.95,strokeWeight:5,map:gmap,zIndex:5}));
       else if(sg.color&&!sg.est){gRoutes.push(new google.maps.Polyline({path,strokeColor:"#ffffff",strokeOpacity:.9,strokeWeight:9,map:gmap,zIndex:3}));gRoutes.push(new google.maps.Polyline({path,strokeColor:sg.color,strokeOpacity:1,strokeWeight:6,map:gmap,zIndex:4}));}
@@ -810,7 +831,7 @@ function renderList(){const ds=$("#dayStrip");ds.innerHTML=`<button class="${day
     const stops=ITIN[dayFilter]||[];if(stops.length){html+=`<div class="tl">`;const legs=dayLegs[dayFilter];let tot=0,wk=0;
       stops.forEach((st,i)=>{const p=byId(st.id);if(!p)return;const alt=st.alt?byId(st.alt):null;
         html+=`<button class="tls ${st.opt?"opt":""}" data-id="${p.id}" style="--c:${CATS[p.cat].c}"><span class="tt num">${st.t}</span><span class="tdot"></span><span class="tb"><b>${must.has(p.id)?"★ ":""}${esc(p.ko.replace(/^러닝: /,""))}</b>${st.opt?' <span class="st">옵션</span>':""}<small>${esc(st.l||"")}${alt?` · 대안: ${esc(alt.ko.replace(/\s*\(.*\)$/,""))}`:""}</small></span></button>`;
-        const nx=stops[i+1];if(nx&&nx.id!==st.id){const lg=legFor(dayFilter,st.id,nx.id);let txt="";if(lg){const line=(lg.steps||[]).filter(x=>x.m==="TRANSIT").map(x=>x.line).filter(Boolean).join(" → ");const trs=(lg.steps||[]).filter(x=>x.m==="TRANSIT");const seg=trs.map(x=>(x.line||"전철")+(x.from&&x.to?` ${x.from}→${x.to}`:"")+(x.stops?` ${x.stops}정거장`:"")).join(" · ");
+        const nx=stops[i+1];if(nx&&nx.id!==st.id){const lg=legFor(dayFilter,st.id,nx.id);let txt="";if(lg){const line=(lg.steps||[]).filter(x=>x.m==="TRANSIT").map(x=>x.line).filter(Boolean).join(" → ");const trs=(lg.steps||[]).filter(x=>x.m==="TRANSIT");const seg=trs.map(x=>(x.line||"전철")+(x.from?` ${x.from}`:"")+(x.head?`(${x.head} 방면)`:"")+(x.to?` → ${x.to}`:"")+(x.stops?` ${x.stops}정거장`:"")+(x.depT&&x.arrT?` ${x.depT}~${x.arrT}`:"")).join(" · 환승 · ");
             if(lg.err){txt=(lg.mode==="WALK"?"도보":"전철")+" · 직선 "+fmtKm(lg.dist/1000)+" (구글 경로 조회 실패"+(lg.msg?": "+lg.msg:"")+")";}
             else{txt=(lg.mode==="WALK"?"도보 ":"")+(seg||"")+" "+fmtDur(lg.dur)+" · "+fmtKm(lg.dist/1000);const dp=minusMin(nx.t,Math.ceil(lg.dur/60));if(dp)txt+=` · ${nx.t} 도착하려면 ${dp} 출발`;}
             if(lg.dur){tot+=lg.dur;if(lg.mode==="WALK")wk+=lg.dur;}}else txt=legs?"":"경로 계산 중…";
