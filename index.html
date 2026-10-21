@@ -647,7 +647,7 @@ const toPath=(arr,close)=>arr.map((c,i)=>(i?"L":"M")+px(c[0],c[1]).map(v=>v.toFi
 const svg=$("#mapsvg");
 let view={x:0,y:0,w:80,h:120};
 const APP_VER="v1021g";
-(function(){let pending=false,busy=false;const banner=document.createElement("button");banner.textContent="새 버전 적용";banner.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:84px;z-index:99998;background:#1f2937;color:#fff;border:0;border-radius:999px;padding:10px 16px;font:600 13px system-ui;box-shadow:0 4px 14px rgba(0,0,0,.25);display:none";banner.onclick=()=>location.reload();document.addEventListener("DOMContentLoaded",()=>document.body.appendChild(banner));
+(function(){let pending=false,busy=false;const banner=document.createElement("button");banner.textContent="새 버전 적용";banner.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:84px;z-index:99998;background:#1f2937;color:#fff;border:0;border-radius:999px;padding:10px 16px;font:600 13px system-ui;box-shadow:0 4px 14px rgba(0,0,0,.25);display:none";banner.onclick=()=>location.reload();if(document.body)document.body.appendChild(banner);else document.addEventListener("DOMContentLoaded",()=>document.body.appendChild(banner));
 async function check(){if(busy)return;busy=true;try{const u=location.origin+location.pathname+"?u="+Date.now();const t=await fetch(u,{cache:"no-store"}).then(r=>r.ok?r.text():"");const m=t.match(/const APP_VER="([^"]+)"/);if(m&&m[1]!==APP_VER){pending=true;banner.style.display="block";}}catch(e){}busy=false;}
 setTimeout(check,20000);setInterval(check,5*60*1000);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){if(pending){location.reload();return;}check();}});
