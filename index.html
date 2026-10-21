@@ -668,7 +668,7 @@ function ensureGoogle(){if(gmap)return;$("#gmap").hidden=false;
       google.maps.OverlayView.preventMapHitsAndGesturesFrom(d);this.getPanes().overlayMouseTarget.appendChild(d);}
     draw(){placeMarkers();}onRemove(){if(this.div)this.div.remove();}}
   gOv=new Ov();gOv.setMap(gmap);gmap.addListener("click",closeSheet);drawRoute();}
-function curView(){if(USE_G&&gmap){const c=gmap.getCenter();return{lat:c.lat(),lng:c.lng(),z:gmap.getZoom()};}if(USE_L&&lmap){const c=lmap.getCenter();return{lat:c.lat,lng:c.lng,z:lmap.getZoom()};}const c=vecCenter();return{lat:c.lat,lng:c.lng,z:wToZoom(view.w)};}
+function curView(){const v=(()=>{if(USE_G&&gmap){const c=gmap.getCenter();if(!c)return null;return{lat:c.lat(),lng:c.lng(),z:gmap.getZoom()};}if(USE_L&&lmap){const c=lmap.getCenter();return{lat:c.lat,lng:c.lng,z:lmap.getZoom()};}const c=vecCenter();return{lat:c.lat,lng:c.lng,z:wToZoom(view.w)};})();if(!v||!isFinite(v.lat)||!isFinite(v.lng))return{lat:35.700,lng:139.772,z:13};if(!isFinite(v.z))v.z=13;return v;}
 let legOpen=false;
 function showEngine(){$("#gmap").hidden=!USE_G;$("#lmap").hidden=!USE_L;const v=!USE_G&&!USE_L;$("#mapsvg").hidden=!v;$("#markers").hidden=!v;$("#zleg").hidden=!v;$("#legend").hidden=!(v&&legOpen);}
 function wToZoom(w){return w>=25?13:w>=18?14:w>=11?15:16;}
@@ -834,7 +834,7 @@ function drawBase(){
   svg.innerHTML=s.join("");
 }
 function applyView(){if(USE_L||USE_G){placeMarkers();return;}svg.setAttribute("viewBox",`${view.x} ${view.y} ${view.w} ${view.h}`);const r=$("#mapwrap").getBoundingClientRect();svg.style.setProperty("--fs",(12*view.w/Math.max(1,r.width))+"px");svg.classList.toggle("near",view.w<20);svg.classList.toggle("close",view.w<9);svg.classList.toggle("far",view.w>=40);placeMarkers();}
-function fitAspect(){const r=$("#mapwrap").getBoundingClientRect();view.h=view.w*r.height/r.width;}
+function fitAspect(){const r=$("#mapwrap").getBoundingClientRect();if(!(r.width>0&&r.height>0)){if(!isFinite(view.h))view.h=view.w;return;}view.h=view.w*r.height/r.width;}
 function centerOn(lat,lng,w){if(USE_G){gmap.setCenter({lat,lng});if(w)gmap.setZoom(wToZoom(w));return;}if(USE_L){lmap.setView([lat,lng],w?wToZoom(w):lmap.getZoom());return;}const[x,y]=px(lat,lng);if(w)view.w=w;fitAspect();view.x=x-view.w/2;view.y=y-view.h/2;applyView();}
 function buildMarkers(){const wrap=$("#markers");wrap.innerHTML="";for(const p of PLACES){const e=document.createElement("button");e.className="mk "+(p.cat==="stay"?"stay":"");e.dataset.id=p.id;e.style.setProperty("--c",CATS[p.cat].c);e.innerHTML=`<span class="lb">${esc(p.ko.replace(/\s*\(.*\)$/,"").replace(/^러닝: /,""))}</span><span class="pin"></span>`;e.addEventListener("click",ev=>{ev.stopPropagation();openSheet(p.id);});wrap.appendChild(e);}
   const m=document.createElement("div");m.className="mk me";m.id="meMk";m.innerHTML=`<span class="pin"></span>`;m.hidden=true;wrap.appendChild(m);}
