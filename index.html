@@ -239,7 +239,7 @@ ul.chk li.ck{color:var(--mute);text-decoration:line-through}
   </div>
 
   <header class="top">
-    <button class="t" id="homeBtn" aria-label="첫 화면">Grace와 도쿄, 가을<small>Tokyo · 10.20 – 10.24 · v1021e</small></button>
+    <button class="t" id="homeBtn" aria-label="첫 화면">Grace와 도쿄, 가을<small>Tokyo · 10.20 – 10.24 · v1021f</small></button>
     <div style="display:flex;align-items:center;gap:10px"><a class="jv" href="https://claude.ai/" target="_blank" rel="noopener" aria-label="Jarvis 열기">Jarvis</a><div class="clock"><b id="clk" class="num">--:--</b><span id="clkd" title="v1021c">도쿄 시간</span></div></div>
   </header>
 
@@ -255,7 +255,7 @@ ul.chk li.ck{color:var(--mute);text-decoration:line-through}
       <div class="legend" id="legend"></div>
       <div class="mapbtns">
         <button class="rbtn" id="zleg" aria-label="노선 범례" style="font-size:11px;font-weight:500" hidden>범례</button>
-        <button class="rbtn" id="ztile" aria-label="지도 스타일 바꾸기" style="font-size:11px;font-weight:500" hidden>심플</button>
+        <button class="rbtn" id="ztile" aria-label="지도 스타일 바꾸기" style="font-size:11px;font-weight:500">약도</button>
         <button class="rbtn" id="zin" aria-label="확대">+</button>
         <button class="rbtn" id="zout" aria-label="축소">−</button>
         <button class="rbtn" id="zhome" aria-label="숙소로 이동"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg></button>
@@ -1012,7 +1012,8 @@ if(store.get("seen",false))$("#cover").classList.add("off");
 function __safe(n,f){try{f();}catch(e){(window.__errs=window.__errs||[]).push(n+": "+String(e&&e.stack||e).slice(0,300));console.error(n,e);}}
 requestAnimationFrame(()=>{__safe("centerOn",()=>centerOn(35.700,139.772,30));__safe("setMode",()=>setMode(mode));__safe("drawRoute",()=>drawRoute());});
 setTimeout(()=>{if(!USE_G&&!USE_L&&mode===0&&!gLoading&&!(window.google&&google.maps&&google.maps.Map)){__safe("setMode-retry",()=>setMode(0));}},3000);
-if(location.search.includes("debug")){const d=document.createElement("div");d.style.cssText="position:fixed;left:8px;right:8px;bottom:90px;z-index:99999;background:#111;color:#fff;font:12px/1.4 monospace;padding:10px;border-radius:8px;white-space:pre-wrap";document.body.appendChild(d);const up=()=>{d.textContent="v1021e mode="+mode+" stored="+store.get("mode",null)+" USE_G="+USE_G+" USE_L="+USE_L+" google="+!!(window.google&&google.maps&&google.maps.Map)+" loading="+gLoading+"\nwhy="+(window.__gmWhy||"-")+"\nerrs="+(window.__errs||[]).slice(-3).join(" | ")+"\nonline="+navigator.onLine+" UA="+navigator.userAgent.slice(0,80);};up();setInterval(up,2000);}
+const __dbgOn=location.search.includes("debug");setTimeout(()=>{if(!USE_G)window.__forceDbg=true;},15000);
+if(true){const d=document.createElement("div");d.hidden=true;d.style.cssText="position:fixed;left:8px;right:8px;bottom:90px;z-index:99999;background:#111;color:#fff;font:12px/1.4 monospace;padding:10px;border-radius:8px;white-space:pre-wrap";document.body.appendChild(d);const up=()=>{d.hidden=!(__dbgOn||window.__forceDbg);d.textContent="v1021f mode="+mode+" stored="+store.get("mode",null)+" USE_G="+USE_G+" USE_L="+USE_L+" google="+!!(window.google&&google.maps&&google.maps.Map)+" loading="+gLoading+" script="+!!window.__gmScript+" modes="+MODES.map(x=>x.n).join("/")+" L="+HAS_L+"\nwhy="+(window.__gmWhy||"-")+"\nerrs="+(window.__errs||[]).slice(-3).join(" | ")+"\nonline="+navigator.onLine+" UA="+navigator.userAgent.slice(0,80);};up();setInterval(up,2000);}
 setTimeout(()=>locate(false),1200);
 setInterval(()=>{if($("#v-near").classList.contains("on"))renderNear();},60000);
 </script>
