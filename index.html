@@ -562,7 +562,7 @@ function stateLabel(st){if(st.s===0)return`<span class="open">영업 중 · ~${s
 /* ---------- 상태 ---------- */
 const store={get(k,d){try{const v=localStorage.getItem("tk_"+k);return v===null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem("tk_"+k,JSON.stringify(v));}catch(e){}}};
 let done=new Set(store.get("done",[]));
-const DONE_SEED={"d20":["narita","keisei","kamotonegi","dormy","porter","tsujihan"],"d20b":["akomeya"],"d21a":["ojo","nmwa","cincinnati"],"d21b":["morikawa"],"d21c":["wpc","shoyeido"]};
+const DONE_SEED={"d20":["narita","keisei","kamotonegi","dormy","porter","tsujihan"],"d20b":["akomeya"],"d21a":["ojo","nmwa","cincinnati"],"d21b":["morikawa"],"d21c":["wpc","shoyeido"],"d21d":["u-todai","tsuboyaki","g6","kitte","zojirushi"]};
 for(const k in DONE_SEED){if(!store.get("seed_"+k,false)){DONE_SEED[k].forEach(id=>done.add(id));store.set("seed_"+k,true);store.set("done",[...done]);}}
 const MUST_DEFAULT=[];
 let must=new Set([...MUST_DEFAULT,...store.get("must",[])]);let mustOnly=!!store.get("mustOnly",false);
