@@ -239,7 +239,7 @@ ul.chk li.ck{color:var(--mute);text-decoration:line-through}
   </div>
 
   <header class="top">
-    <button class="t" id="homeBtn" aria-label="첫 화면">Grace와 도쿄, 가을<small>Tokyo · 10.20 – 10.24 · v1021d</small></button>
+    <button class="t" id="homeBtn" aria-label="첫 화면">Grace와 도쿄, 가을<small>Tokyo · 10.20 – 10.24 · v1021e</small></button>
     <div style="display:flex;align-items:center;gap:10px"><a class="jv" href="https://claude.ai/" target="_blank" rel="noopener" aria-label="Jarvis 열기">Jarvis</a><div class="clock"><b id="clk" class="num">--:--</b><span id="clkd" title="v1021c">도쿄 시간</span></div></div>
   </header>
 
@@ -811,7 +811,7 @@ function setMode(m,announce,fallback){
   if(m<0||m>=MODES.length)m=Math.max(0,VEC_IDX);const M=MODES[m];const cv=curView();
   const finish=()=>{mode=m;if(announce||!fallback)store.set("mode",m);$("#ztile").textContent=M.n;$("#ztile").hidden=MODES.length<2;if(announce)toast("지도: "+M.n);};
   if(M.g){loadGoogle(ok=>{if(!ok){toast("구글맵 실패("+(window.__gmWhy||"원인 미상")+"). 실지도로 표시합니다",8000);setMode(OSM_IDX>=0?OSM_IDX:VEC_IDX,false,true);setTimeout(()=>{if(mode===VEC_IDX&&store.get("mode",0)===m)setMode(m);},8000);return;}
-      ensureGoogle();USE_G=true;USE_L=false;showEngine();google.maps.event.trigger(gmap,"resize");gmap.setCenter({lat:cv.lat,lng:cv.lng});gmap.setZoom(cv.z);placeMarkers();drawRoute();finish();});
+      __safe("ensureGoogle",ensureGoogle);USE_G=true;USE_L=false;showEngine();__safe("gm-center",()=>{google.maps.event.trigger(gmap,"resize");gmap.setCenter({lat:cv.lat,lng:cv.lng});gmap.setZoom(cv.z);});__safe("placeMarkers",placeMarkers);__safe("drawRoute",drawRoute);finish();});
     return;}
   if(M.url){ensureLeaflet();USE_L=true;USE_G=false;showEngine();
     if(tl){lmap.removeLayer(tl);tl=null;}let errs=0,oks=0;
@@ -1009,8 +1009,10 @@ $("#homeBtn").onclick=()=>{$("#cover").classList.remove("off");};
 (function importHash(){try{const m=location.hash.match(/must=([^&]*)/);if(!m)return;const ids=decodeURIComponent(m[1]).split(",").filter(id=>byId(id));let n=0;for(const id of ids)if(!must.has(id)){must.add(id);n++;}store.set("must",[...must]);history.replaceState(null,"",location.pathname+location.search);setTimeout(()=>toast(n?`필수 방문지 ${n}곳을 가져왔습니다 (총 ${must.size}곳)`:"이미 같은 필수 방문지입니다"),600);}catch(e){}})();
 drawBase();buildMarkers();mapChips();renderList();renderRec();renderNear();renderInfo();
 if(store.get("seen",false))$("#cover").classList.add("off");
-requestAnimationFrame(()=>{centerOn(35.700,139.772,30);drawRoute();setMode(mode);});
-if(location.search.includes("debug")){const d=document.createElement("div");d.style.cssText="position:fixed;left:8px;right:8px;bottom:90px;z-index:99999;background:#111;color:#fff;font:12px/1.4 monospace;padding:10px;border-radius:8px;white-space:pre-wrap";document.body.appendChild(d);const up=()=>{d.textContent="v1021d mode="+mode+" stored="+store.get("mode",null)+" USE_G="+USE_G+" USE_L="+USE_L+" google="+!!(window.google&&google.maps&&google.maps.Map)+" loading="+gLoading+"\nwhy="+(window.__gmWhy||"-")+"\nerrs="+(window.__errs||[]).slice(-3).join(" | ")+"\nonline="+navigator.onLine+" UA="+navigator.userAgent.slice(0,80);};up();setInterval(up,2000);}
+function __safe(n,f){try{f();}catch(e){(window.__errs=window.__errs||[]).push(n+": "+String(e&&e.stack||e).slice(0,300));console.error(n,e);}}
+requestAnimationFrame(()=>{__safe("centerOn",()=>centerOn(35.700,139.772,30));__safe("setMode",()=>setMode(mode));__safe("drawRoute",()=>drawRoute());});
+setTimeout(()=>{if(!USE_G&&!USE_L&&mode===0&&!gLoading&&!(window.google&&google.maps&&google.maps.Map)){__safe("setMode-retry",()=>setMode(0));}},3000);
+if(location.search.includes("debug")){const d=document.createElement("div");d.style.cssText="position:fixed;left:8px;right:8px;bottom:90px;z-index:99999;background:#111;color:#fff;font:12px/1.4 monospace;padding:10px;border-radius:8px;white-space:pre-wrap";document.body.appendChild(d);const up=()=>{d.textContent="v1021e mode="+mode+" stored="+store.get("mode",null)+" USE_G="+USE_G+" USE_L="+USE_L+" google="+!!(window.google&&google.maps&&google.maps.Map)+" loading="+gLoading+"\nwhy="+(window.__gmWhy||"-")+"\nerrs="+(window.__errs||[]).slice(-3).join(" | ")+"\nonline="+navigator.onLine+" UA="+navigator.userAgent.slice(0,80);};up();setInterval(up,2000);}
 setTimeout(()=>locate(false),1200);
 setInterval(()=>{if($("#v-near").classList.contains("on"))renderNear();},60000);
 </script>
