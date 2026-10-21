@@ -655,11 +655,13 @@ const VEC_IDX=MODES.findIndex(x=>!x.g&&!x.url);
 let mode=Math.min(+store.get("mode",0)||0,MODES.length-1);
 let USE_G=false,gmap=null,gOv=null,gRoute=null,gEls={},gMeEl=null,gLoading=false,gQueue=[];
 function loadGoogle(cb){if(window.google&&window.google.maps&&google.maps.Map){cb(true);return;}gQueue.push(cb);if(gLoading)return;gLoading=true;
-  const done=ok=>{if(!gLoading)return;gLoading=false;const q=gQueue;gQueue=[];q.forEach(f=>f(ok));};
-  window.__gmReady=()=>done(true);window.gm_authFailure=()=>{toast("구글맵 키 인증 실패. 약도로 표시합니다");setMode(VEC_IDX);};
-  const sc=document.createElement("script");sc.async=true;sc.onerror=()=>done(false);
-  sc.src="https://maps.googleapis.com/maps/api/js?key="+GKEY+"&language=ko&region=JP&v=weekly&loading=async&callback=__gmReady";
-  document.head.appendChild(sc);setTimeout(()=>done(false),12000);}
+  const flush=ok=>{const q=gQueue;gQueue=[];q.forEach(f=>f(ok));};
+  const done=ok=>{if(ok){gLoading=false;flush(true);return;}if(!gLoading)return;gLoading=false;flush(false);};
+  window.__gmReady=()=>done(true);window.gm_authFailure=()=>{toast("구글맵 키 인증 실패. 약도로 표시합니다");setMode(VEC_IDX,false,true);};
+  if(!window.__gmScript){const sc=document.createElement("script");sc.async=true;sc.onerror=()=>{window.__gmScript=null;done(false);};
+    sc.src="https://maps.googleapis.com/maps/api/js?key="+GKEY+"&language=ko&region=JP&v=weekly&loading=async&callback=__gmReady";
+    document.head.appendChild(sc);window.__gmScript=sc;}
+  setTimeout(()=>done(false),25000);}
 function ensureGoogle(){if(gmap)return;$("#gmap").hidden=false;
   gmap=new google.maps.Map($("#gmap"),{center:{lat:35.700,lng:139.772},zoom:13,disableDefaultUI:true,gestureHandling:"greedy",clickableIcons:false,styles:[{featureType:"poi.business",stylers:[{visibility:"off"}]}]});
   class Ov extends google.maps.OverlayView{onAdd(){const d=document.createElement("div");d.style.cssText="position:absolute;left:0;top:0;width:0;height:0";this.div=d;
@@ -802,16 +804,16 @@ function drawSegs(segs){const css=getComputedStyle(document.documentElement);con
   if(lmap){for(const sg of segs){if(sg.mode==="WALK")lRoutes.push(L.polyline(sg.poly,{color:walkC,weight:5,opacity:.95}).addTo(lmap));
       else if(sg.color&&!sg.est){lRoutes.push(L.polyline(sg.poly,{color:"#fff",weight:9,opacity:.9}).addTo(lmap));lRoutes.push(L.polyline(sg.poly,{color:sg.color,weight:6,opacity:1}).addTo(lmap));}
       else lRoutes.push(L.polyline(sg.poly,{color:trC,weight:3,dashArray:"7 5",opacity:.8}).addTo(lmap));}}}
-function setMode(m,announce){
+function setMode(m,announce,fallback){
   if(m<0||m>=MODES.length)m=Math.max(0,VEC_IDX);const M=MODES[m];const cv=curView();
-  const finish=()=>{mode=m;store.set("mode",m);$("#ztile").textContent=M.n;$("#ztile").hidden=MODES.length<2;if(announce)toast("지도: "+M.n);};
-  if(M.g){loadGoogle(ok=>{if(!ok){toast("구글맵을 불러오지 못해 약도로 표시합니다");setMode(VEC_IDX);return;}
+  const finish=()=>{mode=m;if(announce||!fallback)store.set("mode",m);$("#ztile").textContent=M.n;$("#ztile").hidden=MODES.length<2;if(announce)toast("지도: "+M.n);};
+  if(M.g){loadGoogle(ok=>{if(!ok){toast("구글맵을 불러오지 못해 약도로 표시합니다. 잠시 후 다시 시도합니다");setMode(VEC_IDX,false,true);setTimeout(()=>{if(mode===VEC_IDX&&store.get("mode",0)===m)setMode(m);},8000);return;}
       ensureGoogle();USE_G=true;USE_L=false;showEngine();google.maps.event.trigger(gmap,"resize");gmap.setCenter({lat:cv.lat,lng:cv.lng});gmap.setZoom(cv.z);placeMarkers();drawRoute();finish();});
     return;}
   if(M.url){ensureLeaflet();USE_L=true;USE_G=false;showEngine();
     if(tl){lmap.removeLayer(tl);tl=null;}let errs=0,oks=0;
     tl=L.tileLayer(M.url,{maxZoom:18,attribution:M.attr}).addTo(lmap);
-    tl.on("tileload",()=>{oks++;});tl.on("tileerror",()=>{errs++;if(oks===0&&errs>=4&&mode===m){setMode(VEC_IDX);toast("실지도를 불러오지 못해 약도로 표시합니다");}});
+    tl.on("tileload",()=>{oks++;});tl.on("tileerror",()=>{errs++;if(oks===0&&errs>=4&&mode===m){setMode(VEC_IDX,false,true);toast("실지도를 불러오지 못해 약도로 표시합니다");}});
     lmap.invalidateSize();lmap.setView([cv.lat,cv.lng],cv.z);placeMarkers();drawRoute();finish();return;}
   USE_L=false;USE_G=false;showEngine();centerOn(cv.lat,cv.lng,zoomToW(cv.z));drawRoute();finish();}
 function drawBase(){
