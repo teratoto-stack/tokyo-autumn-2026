@@ -646,6 +646,7 @@ const LINES=[
 const toPath=(arr,close)=>arr.map((c,i)=>(i?"L":"M")+px(c[0],c[1]).map(v=>v.toFixed(1)).join(" ")).join(" ")+(close?"Z":"");
 const svg=$("#mapsvg");
 let view={x:0,y:0,w:80,h:120};
+window.__errs=[];window.addEventListener("error",e=>{window.__errs.push(String(e.message)+" @"+(e.filename||"")+":"+e.lineno);});window.addEventListener("unhandledrejection",e=>{window.__errs.push("rej:"+String(e.reason&&e.reason.stack||e.reason));});
 const HAS_L=!!(typeof window.L!=="undefined"&&window.L.map);
 let USE_L=false;
 let lmap=null,lmk={},meL=null,tl=null;
@@ -664,6 +665,7 @@ function loadGoogle(cb){if(window.google&&window.google.maps&&google.maps.Map){c
     document.head.appendChild(sc);window.__gmScript=sc;}
   setTimeout(()=>{if(gLoading)window.__gmWhy="25초 내 응답 없음";done(false);},25000);}
 function ensureGoogle(){if(gmap)return;$("#gmap").hidden=false;
+  if(!google.maps.Map.prototype.__wrapped){const o=google.maps.Map.prototype.setCenter;google.maps.Map.prototype.setCenter=function(c){if(!c||!isFinite(+c.lat)||!isFinite(+c.lng)){window.__errs.push("setCenterNaN "+JSON.stringify(c)+" "+(new Error().stack||"").split("\n").slice(1,4).join("|"));return;}return o.call(this,c);};google.maps.Map.prototype.__wrapped=true;}
   gmap=new google.maps.Map($("#gmap"),{center:{lat:35.700,lng:139.772},zoom:13,disableDefaultUI:true,gestureHandling:"greedy",clickableIcons:false,styles:[{featureType:"poi.business",stylers:[{visibility:"off"}]}]});
   class Ov extends google.maps.OverlayView{onAdd(){const d=document.createElement("div");d.style.cssText="position:absolute;left:0;top:0;width:0;height:0";this.div=d;
       for(const p of PLACES){const e=document.createElement("button");e.className="mk "+(p.cat==="stay"?"stay":"");e.dataset.id=p.id;e.style.setProperty("--c",CATS[p.cat].c);e.innerHTML=`<span class="lb">${esc(p.ko.replace(/\s*\(.*\)$/,"").replace(/^러닝: /,""))}</span><span class="pin"></span>`;e.addEventListener("click",ev=>{ev.stopPropagation();openSheet(p.id);});gEls[p.id]=e;d.appendChild(e);}
