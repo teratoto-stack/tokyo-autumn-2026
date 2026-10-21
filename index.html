@@ -239,7 +239,7 @@ ul.chk li.ck{color:var(--mute);text-decoration:line-through}
   </div>
 
   <header class="top">
-    <button class="t" id="homeBtn" aria-label="첫 화면">Grace와 도쿄, 가을<small>Tokyo · 10.20 – 10.24 · v1021f</small></button>
+    <button class="t" id="homeBtn" aria-label="첫 화면">Grace와 도쿄, 가을<small>Tokyo · 10.20 – 10.24 · <span id="appver">v1021g</span></small></button>
     <div style="display:flex;align-items:center;gap:10px"><a class="jv" href="https://claude.ai/" target="_blank" rel="noopener" aria-label="Jarvis 열기">Jarvis</a><div class="clock"><b id="clk" class="num">--:--</b><span id="clkd" title="v1021c">도쿄 시간</span></div></div>
   </header>
 
@@ -646,6 +646,12 @@ const LINES=[
 const toPath=(arr,close)=>arr.map((c,i)=>(i?"L":"M")+px(c[0],c[1]).map(v=>v.toFixed(1)).join(" ")).join(" ")+(close?"Z":"");
 const svg=$("#mapsvg");
 let view={x:0,y:0,w:80,h:120};
+const APP_VER="v1021g";
+(function(){let pending=false,busy=false;const banner=document.createElement("button");banner.textContent="새 버전 적용";banner.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:84px;z-index:99998;background:#1f2937;color:#fff;border:0;border-radius:999px;padding:10px 16px;font:600 13px system-ui;box-shadow:0 4px 14px rgba(0,0,0,.25);display:none";banner.onclick=()=>location.reload();document.addEventListener("DOMContentLoaded",()=>document.body.appendChild(banner));
+async function check(){if(busy)return;busy=true;try{const u=location.origin+location.pathname+"?u="+Date.now();const t=await fetch(u,{cache:"no-store"}).then(r=>r.ok?r.text():"");const m=t.match(/const APP_VER="([^"]+)"/);if(m&&m[1]!==APP_VER){pending=true;banner.style.display="block";}}catch(e){}busy=false;}
+setTimeout(check,20000);setInterval(check,5*60*1000);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){if(pending){location.reload();return;}check();}});
+window.__updCheck=check;})();
 window.__errs=[];window.addEventListener("error",e=>{window.__errs.push(String(e.message)+" @"+(e.filename||"")+":"+e.lineno);});window.addEventListener("unhandledrejection",e=>{window.__errs.push("rej:"+String(e.reason&&e.reason.stack||e.reason));});
 const HAS_L=!!(typeof window.L!=="undefined"&&window.L.map);
 let USE_L=false;
@@ -1013,7 +1019,7 @@ function __safe(n,f){try{f();}catch(e){(window.__errs=window.__errs||[]).push(n+
 requestAnimationFrame(()=>{__safe("centerOn",()=>centerOn(35.700,139.772,30));__safe("setMode",()=>setMode(mode));__safe("drawRoute",()=>drawRoute());});
 setTimeout(()=>{if(!USE_G&&!USE_L&&mode===0&&!gLoading&&!(window.google&&google.maps&&google.maps.Map)){__safe("setMode-retry",()=>setMode(0));}},3000);
 const __dbgOn=location.search.includes("debug");setTimeout(()=>{if(!USE_G)window.__forceDbg=true;},15000);
-if(true){const d=document.createElement("div");d.hidden=true;d.style.cssText="position:fixed;left:8px;right:8px;bottom:90px;z-index:99999;background:#111;color:#fff;font:12px/1.4 monospace;padding:10px;border-radius:8px;white-space:pre-wrap";document.body.appendChild(d);const up=()=>{d.hidden=!(__dbgOn||window.__forceDbg);d.textContent="v1021f mode="+mode+" stored="+store.get("mode",null)+" USE_G="+USE_G+" USE_L="+USE_L+" google="+!!(window.google&&google.maps&&google.maps.Map)+" loading="+gLoading+" script="+!!window.__gmScript+" modes="+MODES.map(x=>x.n).join("/")+" L="+HAS_L+"\nwhy="+(window.__gmWhy||"-")+"\nerrs="+(window.__errs||[]).slice(-3).join(" | ")+"\nonline="+navigator.onLine+" UA="+navigator.userAgent.slice(0,80);};up();setInterval(up,2000);}
+if(true){const d=document.createElement("div");d.hidden=true;d.style.cssText="position:fixed;left:8px;right:8px;bottom:90px;z-index:99999;background:#111;color:#fff;font:12px/1.4 monospace;padding:10px;border-radius:8px;white-space:pre-wrap";document.body.appendChild(d);const up=()=>{d.hidden=!(__dbgOn||window.__forceDbg);d.textContent=APP_VER+" mode="+mode+" stored="+store.get("mode",null)+" USE_G="+USE_G+" USE_L="+USE_L+" google="+!!(window.google&&google.maps&&google.maps.Map)+" loading="+gLoading+" script="+!!window.__gmScript+" modes="+MODES.map(x=>x.n).join("/")+" L="+HAS_L+"\nwhy="+(window.__gmWhy||"-")+"\nerrs="+(window.__errs||[]).slice(-3).join(" | ")+"\nonline="+navigator.onLine+" UA="+navigator.userAgent.slice(0,80);};up();setInterval(up,2000);}
 setTimeout(()=>locate(false),1200);
 setInterval(()=>{if($("#v-near").classList.contains("on"))renderNear();},60000);
 </script>
