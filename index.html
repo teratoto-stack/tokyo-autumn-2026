@@ -239,7 +239,7 @@ ul.chk li.ck{color:var(--mute);text-decoration:line-through}
   </div>
 
   <header class="top">
-    <button class="t" id="homeBtn" aria-label="첫 화면">Grace와 도쿄, 가을<small>Tokyo · 10.20 – 10.24 · <span id="appver">v1021k</span></small></button>
+    <button class="t" id="homeBtn" aria-label="첫 화면">Grace와 도쿄, 가을<small>Tokyo · 10.20 – 10.24 · <span id="appver">v1021l</span></small></button>
     <div style="display:flex;align-items:center;gap:10px"><a class="jv" href="https://claude.ai/" target="_blank" rel="noopener" aria-label="Jarvis 열기">Jarvis</a><div class="clock"><b id="clk" class="num">--:--</b><span id="clkd" title="v1021c">도쿄 시간</span></div></div>
   </header>
 
@@ -256,7 +256,7 @@ ul.chk li.ck{color:var(--mute);text-decoration:line-through}
       <div class="legend" id="legend"></div>
       <div class="mapbtns">
         <button class="rbtn" id="zleg" aria-label="노선 범례" style="font-size:11px;font-weight:500" hidden>범례</button>
-        <button class="rbtn" id="ztile" aria-label="지도 스타일 바꾸기" style="font-size:11px;font-weight:500;display:none">구글</button>
+        <button class="rbtn" id="ztile" aria-label="구글 지도 다시 불러오기" style="font-size:11px;font-weight:500">구글</button>
         <button class="rbtn" id="zin" aria-label="확대">+</button>
         <button class="rbtn" id="zout" aria-label="축소">−</button>
         <button class="rbtn" id="zhome" aria-label="숙소로 이동"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg></button>
@@ -647,7 +647,7 @@ const LINES=[
 const toPath=(arr,close)=>arr.map((c,i)=>(i?"L":"M")+px(c[0],c[1]).map(v=>v.toFixed(1)).join(" ")).join(" ")+(close?"Z":"");
 const svg=$("#mapsvg");
 let view={x:0,y:0,w:80,h:120};
-const APP_VER="v1021k";
+const APP_VER="v1021l";
 (function(){let pending=false,busy=false;const banner=document.createElement("button");banner.textContent="새 버전 적용";banner.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:84px;z-index:99998;background:#1f2937;color:#fff;border:0;border-radius:999px;padding:10px 16px;font:600 13px system-ui;box-shadow:0 4px 14px rgba(0,0,0,.25);display:none";const go=()=>location.replace(location.pathname+"?u="+Date.now()+location.hash);banner.onclick=go;if(document.body)document.body.appendChild(banner);else document.addEventListener("DOMContentLoaded",()=>document.body.appendChild(banner));
 async function check(){if(busy)return;busy=true;try{const u=location.origin+location.pathname+"?u="+Date.now();const t=await fetch(u,{cache:"no-store"}).then(r=>r.ok?r.text():"");const m=t.match(/const APP_VER="([^"]+)"/);if(m&&m[1]!==APP_VER){pending=true;banner.style.display="block";}}catch(e){}busy=false;}
 setTimeout(check,20000);setInterval(check,5*60*1000);
@@ -821,7 +821,7 @@ function drawSegs(segs){const css=getComputedStyle(document.documentElement);con
       else lRoutes.push(L.polyline(sg.poly,{color:trC,weight:3,dashArray:"7 5",opacity:.8}).addTo(lmap));}}}
 function setMode(m,announce,fallback){
   if(m<0||m>=MODES.length)m=Math.max(0,VEC_IDX);const M=MODES[m];const cv=curView();
-  const finish=()=>{mode=m;if(announce||!fallback)store.set("mode",m);$("#ztile").textContent=M.n;$("#ztile").hidden=true;if(announce)toast("지도: "+M.n);};
+  const finish=()=>{mode=m;if(announce||!fallback)store.set("mode",m);$("#ztile").textContent=M.n;$("#ztile").hidden=false;$("#ztile").textContent="구글";if(announce)toast("지도: "+M.n);};
   if(M.g){loadGoogle(ok=>{if(!ok)return;
       __safe("ensureGoogle",ensureGoogle);USE_G=true;USE_L=false;showEngine();__safe("gm-center",()=>{google.maps.event.trigger(gmap,"resize");gmap.setCenter({lat:cv.lat,lng:cv.lng});gmap.setZoom(cv.z);});__safe("placeMarkers",placeMarkers);__safe("drawRoute",drawRoute);finish();});
     return;}
@@ -878,7 +878,7 @@ function bindPan(){const w=$("#mapwrap");let pts=new Map(),last=null,pinch=null;
   $("#zout").onclick=()=>{if(USE_G){gmap.setZoom(gmap.getZoom()-1);return;}if(USE_L){lmap.zoomOut();return;}const r=w.getBoundingClientRect();zoomAt(Math.min(260,view.w*1.45),r.width/2,r.height/2);};
   $("#zhome").onclick=()=>centerOn(35.709,139.776,14);
   $("#zme").onclick=()=>locate(true);
-  $("#ztile").onclick=()=>setMode((mode+1)%MODES.length,true);
+  $("#ztile").onclick=()=>{toast("구글 지도 다시 불러옵니다");if(gmap){try{google.maps.event.trigger(gmap,"resize");}catch(e){}}USE_G=false;setMode(0,false);};
   $("#zleg").onclick=()=>{legOpen=!legOpen;$("#legend").hidden=!legOpen;};
   window.addEventListener("resize",()=>{if(USE_G){google.maps.event.trigger(gmap,"resize");}else if(USE_L){if(lmap)lmap.invalidateSize();}else{fitAspect();applyView();}});
 }
