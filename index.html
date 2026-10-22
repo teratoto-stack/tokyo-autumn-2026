@@ -685,7 +685,7 @@ const LINES=[
 const toPath=(arr,close)=>arr.map((c,i)=>(i?"L":"M")+px(c[0],c[1]).map(v=>v.toFixed(1)).join(" ")).join(" ")+(close?"Z":"");
 const svg=$("#mapsvg");
 let view={x:0,y:0,w:80,h:120};
-const APP_VER="v1022e";
+const APP_VER="v1022f";
 (function(){let pending=false,busy=false;const banner=document.createElement("button");banner.textContent="새 버전 적용";banner.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:84px;z-index:99998;background:#1f2937;color:#fff;border:0;border-radius:999px;padding:10px 16px;font:600 13px system-ui;box-shadow:0 4px 14px rgba(0,0,0,.25);display:none";const go=()=>location.replace(location.pathname+"?u="+Date.now()+location.hash);banner.onclick=go;if(document.body)document.body.appendChild(banner);else document.addEventListener("DOMContentLoaded",()=>document.body.appendChild(banner));
 async function check(){if(busy)return;busy=true;try{const u=location.origin+location.pathname+"?u="+Date.now();const t=await fetch(u,{cache:"no-store"}).then(r=>r.ok?r.text():"");const m=t.match(/const APP_VER="([^"]+)"/);if(m&&m[1]!==APP_VER){pending=true;try{sessionStorage.setItem("tk_want",m[1]);}catch(e){}banner.style.display="block";}}catch(e){}busy=false;}
 setTimeout(check,20000);setInterval(check,5*60*1000);
@@ -1043,7 +1043,7 @@ function renderInfo(){const ck=new Set(store.get("chk",[]));
   <div class="card"><h3>스카이라이너 · 공항 이동</h3>
    <dl class="kv"><dt>가는 날</dt><dd>T3 도착 → T2까지 도보 약 15분 또는 무료 셔틀 약 5분 → 공항제2빌딩역 창구에서 QR+여권으로 왕복권 교환, 귀국용 종이 교환권도 함께 수령. 게이세이우에노까지 약 41분.</dd><dt>오는 날</dt><dd>게이세이우에노역 창구에 종이 교환권 제시 → 좌석 지정. 15~20분 일찍 도착.</dd><dt>요금</dt><dd>온라인 왕복 4,500엔/인</dd></dl></div>
   <div class="card"><h3>5일 한눈에</h3>
-   <dl class="kv"><dt>10/20 화 ✓</dt><dd>[기록] 나리타 도착 → 카모토네기 오리 라멘 → 체크인 → PORTER 우에노 → AKOMEYA 니혼바시 → 츠지한 저녁</dd><dt>10/21 수 ✓</dt><dd>[기록] 우에노 공원 조깅 → 오조 모닝 → 서양미술관 앞뜰·신시내티전 → 모리카와 점심 → 루오 → 도쿄대 → WPC·쇼에이도(긴자) → 아식스·긴자 식스 → KITTE → 조지루시 저녁 → 하나미즈키 발 마사지</dd><dt>10/22 목 ✓</dt><dd>[기록] 황거 러닝 5.7km·스타벅스 → 와세다(토덴 테이블 점심·무라카미 라이브러리·11호관·은행나무 길) → 오모테산도 건축 산책(오모카도·GYRE·힐즈·Rand·이토 도요) → LOVE & TABLE → 오코시 저녁. 프라다·국립신미술관·아자부다이는 생략</dd><dt>10/23 금</dt><dd>스미다강 2~3km → 센소지 → 젠 아침 → 전망대 → 샤워 → 긴자 큐베이/빈초 → Wpc 우산 → 기무라야·이토야·G6 → 쇼에이도 향 → 츠키시마 몬자</dd><dt>10/24 토</dt><dd>온천 → 야요이켄 → 아메요코 → 공원 산책 → 11:00 체크아웃 → 13:20 스카이라이너</dd></dl>
+   <dl class="kv"><dt>10/20 화 ✓</dt><dd>[기록] 나리타 도착 → 카모토네기 오리 라멘 → 체크인 → PORTER 우에노 → AKOMEYA 니혼바시 → 츠지한 저녁</dd><dt>10/21 수 ✓</dt><dd>[기록] 우에노 공원 조깅 → 오조 모닝 → 서양미술관 앞뜰·신시내티전 → 모리카와 점심 → 루오 → 도쿄대 → WPC·쇼에이도(긴자) → 아식스·긴자 식스 → KITTE → 조지루시 저녁 → 하나미즈키 발 마사지</dd><dt>10/22 목 ✓</dt><dd>[기록] 황거 러닝 5.7km·스타벅스 → 와세다(토덴 테이블 점심·무라카미 라이브러리·11호관·은행나무 길) → 오모테산도 건축 산책(오모카도·GYRE·힐즈·Rand·이토 도요) → LOVE & TABLE → 오코시 저녁. 프라다·국립신미술관·아자부다이는 생략</dd><dt>10/23 금</dt><dd>스미다강 3km → 센소지 → 펠리칸 빵 포장 → 숙소 아침·샤워 → 갓파바시 쇼핑 → 빈초 점심 → 이토야·무지·유니클로 긴자 → 도쿄역 오카시 랜드 → 츠키시마 몬자</dd><dt>10/24 토</dt><dd>온천 → 야요이켄 → 아메요코 → 공원 산책 → 11:00 체크아웃 → 13:20 스카이라이너</dd></dl>
    <p class="hint" style="margin-top:8px">원칙: 06시대 러닝 → 숙소 샤워 → 하루 한 지역 → 저녁 후 온천·21:30 라멘. 일몰 약 16:55. 상세 시각은 「일정·목록」 탭.</p></div>
   <div class="card"><h3>출발 전 체크</h3><ul class="chk">${CHECK.map((t,i)=>`<li class="${ck.has(i)?"ck":""}"><input type="checkbox" id="ck${i}" ${ck.has(i)?"checked":""}><label for="ck${i}">${esc(t)}</label></li>`).join("")}</ul></div>
   <div class="card"><h3>긴급</h3><dl class="kv"><dt>일본</dt><dd>경찰 110 · 구급 119</dd><dt>영사콜센터</dt><dd>+82-2-3210-0404 (24시간)</dd></dl></div>
