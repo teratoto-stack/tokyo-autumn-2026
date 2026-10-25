@@ -692,7 +692,7 @@ const LINES=[
 const toPath=(arr,close)=>arr.map((c,i)=>(i?"L":"M")+px(c[0],c[1]).map(v=>v.toFixed(1)).join(" ")).join(" ")+(close?"Z":"");
 const svg=$("#mapsvg");
 let view={x:0,y:0,w:80,h:120};
-const APP_VER="v1025a";
+const APP_VER="v1025b";
 (function(){let pending=false,busy=false;const banner=document.createElement("button");banner.textContent="새 버전 적용";banner.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:84px;z-index:99998;background:#1f2937;color:#fff;border:0;border-radius:999px;padding:10px 16px;font:600 13px system-ui;box-shadow:0 4px 14px rgba(0,0,0,.25);display:none";const go=()=>location.replace(location.pathname+"?u="+Date.now()+location.hash);banner.onclick=go;if(document.body)document.body.appendChild(banner);else document.addEventListener("DOMContentLoaded",()=>document.body.appendChild(banner));
 async function check(){if(busy)return;busy=true;try{const u=location.origin+location.pathname+"?u="+Date.now();const t=await fetch(u,{cache:"no-store"}).then(r=>r.ok?r.text():"");const m=t.match(/const APP_VER="([^"]+)"/);if(m&&m[1]!==APP_VER){pending=true;try{sessionStorage.setItem("tk_want",m[1]);}catch(e){}banner.style.display="block";}}catch(e){}busy=false;}
 setTimeout(check,20000);setInterval(check,5*60*1000);
@@ -1050,7 +1050,7 @@ function renderInfo(){const ck=new Set(store.get("chk",[]));
   <div class="card"><h3>스카이라이너 · 공항 이동</h3>
    <dl class="kv"><dt>가는 날</dt><dd>T3 도착 → T2까지 도보 약 15분 또는 무료 셔틀 약 5분 → 공항제2빌딩역 창구에서 QR+여권으로 왕복권 교환, 귀국용 종이 교환권도 함께 수령. 게이세이우에노까지 약 41분.</dd><dt>오는 날</dt><dd>게이세이우에노역 창구에 종이 교환권 제시 → 좌석 지정. 15~20분 일찍 도착.</dd><dt>요금</dt><dd>온라인 왕복 4,500엔/인</dd></dl></div>
   <div class="card"><h3>여행 경비 정산 (2인)</h3>
-   <dl class="kv"><dt>항공</dt><dd>제주항공 왕복 2인 · 708,800원</dd><dt>숙소</dt><dd>도미인 4박 (아고다) · 1,215,141원</dd><dt>클룩</dt><dd>스카이라이너·쿠폰·eSIM · 70,400원</dd><dt>현지 지출</dt><dd>토스 엔화 144,523엔 (카드 124,523 + 현금 20,000) ≈ 1,219,600원</dd><dt>합계</dt><dd><b>약 321만 원</b> (1인 약 161만 원)</dd><dt>기준</dt><dd>엔화는 100엔=843.88원(10/23) 환산. 실제 환전 단가와 차이 가능. 루브르전 전매권·인천공항 주차비·숙박세 별도</dd></dl></div>
+   <dl class="kv"><dt>항공</dt><dd>제주항공 왕복 2인 · 708,800원</dd><dt>숙소</dt><dd>도미인 4박 (아고다) · 1,215,141원</dd><dt>클룩</dt><dd>스카이라이너·쿠폰·eSIM · 70,400원</dd><dt>현지 지출</dt><dd>토스 엔화 144,523엔 (카드 124,523 + 현금 20,000) ≈ 1,219,600원</dd><dt>보유 엔화 현금</dt><dd>기존 보유분 사용 약 200,000원 (요한 추정)</dd><dt>합계</dt><dd><b>약 341만 원</b> (1인 약 171만 원)</dd><dt>기준</dt><dd>엔화는 100엔=843.88원(10/23) 환산. 실제 환전 단가와 차이 가능. 루브르전 전매권·인천공항 주차비·숙박세 별도</dd></dl></div>
   <div class="card"><h3>5일 한눈에</h3>
    <dl class="kv"><dt>10/20 화 ✓</dt><dd>[기록] 나리타 도착 → 카모토네기 오리 라멘 → 체크인 → PORTER 우에노 → AKOMEYA 니혼바시 → 츠지한 저녁</dd><dt>10/21 수 ✓</dt><dd>[기록] 우에노 공원 조깅 → 오조 모닝 → 서양미술관 앞뜰·신시내티전 → 모리카와 점심 → 루오 → 도쿄대 → WPC·쇼에이도(긴자) → 아식스·긴자 식스 → KITTE → 조지루시 저녁 → 하나미즈키 발 마사지</dd><dt>10/22 목 ✓</dt><dd>[기록] 황거 러닝 5.7km·스타벅스 → 와세다(토덴 테이블 점심·무라카미 라이브러리·11호관·은행나무 길) → 오모테산도 건축 산책(오모카도·GYRE·힐즈·Rand·이토 도요) → LOVE & TABLE → 오코시 저녁. 프라다·국립신미술관·아자부다이는 생략</dd><dt>10/23 금 ✓</dt><dd>[기록] 스미다강 러닝 → 센소지 → 아로마 아침 → 펠리칸(구경) → 사카에야 카레 → 아키하바라·진보초 → 제비오·미즈노(러닝화 시착) → 국립신미술관 카페 → 21_21·미드타운 → OYOGE → 모리타워 52층 카페 저녁·야경 → 귀가</dd><dt>10/24 토 ✓</dt><dd>[기록] 카페 라팡 아침 → 요시이케 장보기 → ABC마트·아트스포츠 → 체크아웃 → 우에노 야부 소바 → 13:20 스카이라이너 → 16:50 나리타 → 19:40 인천</dd></dl>
    <p class="hint" style="margin-top:8px">원칙: 06시대 러닝 → 숙소 샤워 → 하루 한 지역 → 저녁 후 온천·21:30 라멘. 일몰 약 16:55. 상세 시각은 「일정·목록」 탭.</p></div>
