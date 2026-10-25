@@ -692,7 +692,7 @@ const LINES=[
 const toPath=(arr,close)=>arr.map((c,i)=>(i?"L":"M")+px(c[0],c[1]).map(v=>v.toFixed(1)).join(" ")).join(" ")+(close?"Z":"");
 const svg=$("#mapsvg");
 let view={x:0,y:0,w:80,h:120};
-const APP_VER="v1025e";
+const APP_VER="v1025f";
 (function(){let pending=false,busy=false;const banner=document.createElement("button");banner.textContent="새 버전 적용";banner.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:84px;z-index:99998;background:#1f2937;color:#fff;border:0;border-radius:999px;padding:10px 16px;font:600 13px system-ui;box-shadow:0 4px 14px rgba(0,0,0,.25);display:none";const go=()=>location.replace(location.pathname+"?u="+Date.now()+location.hash);banner.onclick=go;if(document.body)document.body.appendChild(banner);else document.addEventListener("DOMContentLoaded",()=>document.body.appendChild(banner));
 async function check(){if(busy)return;busy=true;try{const u=location.origin+location.pathname+"?u="+Date.now();const t=await fetch(u,{cache:"no-store"}).then(r=>r.ok?r.text():"");const m=t.match(/const APP_VER="([^"]+)"/);if(m&&m[1]!==APP_VER){pending=true;try{sessionStorage.setItem("tk_want",m[1]);}catch(e){}banner.style.display="block";}}catch(e){}busy=false;}
 setTimeout(check,20000);setInterval(check,5*60*1000);
@@ -1045,7 +1045,7 @@ function renderInfo(){const ck=new Set(store.get("chk",[]));
    <div class="flight"><div class="ap">NRT<small>나리타 T3 · 16:50 출발</small></div><div class="mid"><b>7C1106</b>10/24 (토)</div><div class="ap r">ICN<small>인천</small></div></div>
    <dl class="kv"><dt>예약번호</dt><dd>별도 보관 (항공사 앱·이메일)</dd><dt>좌석</dt><dd>8E · 8F</dd><dt>귀국일</dt><dd>T3 14:20 도착 목표. 게이세이우에노 13:20경 스카이라이너.</dd></dl></div>
   <div class="card"><h3>숙소 · 도미인 우에노 오카치마치</h3>
-   <dl class="kv"><dt>아고다</dt><dd>예약번호 별도 보관 · 더블룸 · 4박 (10/20~24)</dd><dt>결제</dt><dd>선결제 완료 · 숙박세 없음 징수 없었음</dd><dt>체크인</dt><dd>15:00 / 체크아웃 11:00</dd><dt>온천</dt><dd>12층 대욕장 15:00~익일 10:00 (사우나 01~05시 중단)</dd><dt>야식</dt><dd>무료 라멘 21:30~23:00</dd><dt>세탁</dt><dd>12층 대욕장 내 런드리 코너(공식 팸플릿). 세탁기 무료·세제 자동 / 건조기 100엔·20분(체인 공통 기준). 남녀 탈의실별 분리 여부는 프런트 확인.</dd><dt>주소</dt><dd><span class="ja">東京都台東区上野6-7-22</span></dd></dl>
+   <dl class="kv"><dt>아고다</dt><dd>예약번호 별도 보관 · 더블룸 · 4박 (10/20~24)</dd><dt>결제</dt><dd>선결제 완료 · 숙박세 별도 징수 없었음</dd><dt>체크인</dt><dd>15:00 / 체크아웃 11:00</dd><dt>온천</dt><dd>12층 대욕장 15:00~익일 10:00 (사우나 01~05시 중단)</dd><dt>야식</dt><dd>무료 라멘 21:30~23:00</dd><dt>세탁</dt><dd>12층 대욕장 내 런드리 코너(공식 팸플릿). 세탁기 무료·세제 자동 / 건조기 100엔·20분(체인 공통 기준). 남녀 탈의실별 분리 여부는 프런트 확인.</dd><dt>주소</dt><dd><span class="ja">東京都台東区上野6-7-22</span></dd></dl>
    <div class="acts" style="margin-top:10px"><a class="pri" href="${gmapsDir(byId("dormy"),"transit")}" target="_blank" rel="noopener">숙소로 길찾기</a></div></div>
   <div class="card"><h3>스카이라이너 · 공항 이동</h3>
    <dl class="kv"><dt>가는 날</dt><dd>T3 도착 → T2까지 도보 약 15분 또는 무료 셔틀 약 5분 → 공항제2빌딩역 창구에서 QR+여권으로 왕복권 교환, 귀국용 종이 교환권도 함께 수령. 게이세이우에노까지 약 41분.</dd><dt>오는 날</dt><dd>게이세이우에노역 창구에 종이 교환권 제시 → 좌석 지정. 15~20분 일찍 도착.</dd><dt>요금</dt><dd>온라인 왕복 4,500엔/인</dd></dl></div>
